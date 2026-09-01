@@ -1,3 +1,7 @@
 require('dotenv').config();
 
-module.exports = {};
+module.exports = {
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
+};
