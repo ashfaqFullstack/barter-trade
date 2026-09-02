@@ -1,13 +1,14 @@
 const httpStatus = require('http-status');
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
-const { cloudinaryService } = require('.');
+// const { cloudinaryService } = require('./cloudinary.service');
+const cloudinaryService = require('./cloudinary.service');
 
 const getUploadSignature = () => cloudinaryService.generateUploadSignature();
 
-
 const completeBusinessProfile = async (userId, body) => {
     const existing = await prisma.businessProfile.findUnique({ where: { userId } });
+    console.log('existing profile:', existing);
     if (existing) {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Business profile already exists');
     }

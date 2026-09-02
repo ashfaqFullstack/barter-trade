@@ -39,7 +39,7 @@ app.use((req, res, next) => {
 // if not api error then convert it to a error state shape 🔁
 app.use(errorConverter);
 
-// global error handler middleware
+// Global error handler middleware
 app.use(errorHandler);
 
 module.exports = app

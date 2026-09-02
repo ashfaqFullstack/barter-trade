@@ -1,6 +1,6 @@
-const httpStatus = require('http-status');
+const httpStatus = require('http-status').default;
+const { businessService } = require('../services');
 const catchAsync = require('../utils/catchAsync');
-const businessService = require('../services/business.service');
 
 const completeProfile = catchAsync(async (req, res) => {
     const profile = await businessService.completeBusinessProfile(req.user.id, req.body);
@@ -13,6 +13,7 @@ const getUploadSignature = catchAsync(async (req, res) => {
 });
 
 const saveDocuments = catchAsync(async (req, res) => {
+    console.log('req.body.documents:', req.files);
     const documents = await businessService.saveBusinessDocuments(req.user.id, req.body.documents);
     res.status(httpStatus.CREATED).send(documents);
 });

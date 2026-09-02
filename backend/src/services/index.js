@@ -5,3 +5,5 @@ module.exports.emailService = require('./email.service');
 module.exports.exchangeRateService = require('./exchangeRate.service');
 module.exports.businessService = require('./business.service');
 module.exports.cloudinaryService = require('./cloudinary.service');
+module.exports.customerService = require('./customer.service');
+module.exports.adminService = require('./admin.service');
