@@ -99,6 +99,8 @@ const resetPassword = async (email, otp, newPassword) => {
     ]);
 };
 
+
+
 module.exports = {
     loginUserWithEmailandPassword,
     logout,
