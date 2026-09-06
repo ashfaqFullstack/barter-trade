@@ -9,4 +9,19 @@ const getPendingUsers = catchAsync(async (req, res) => {
     res.send(result);
 });
 
-module.exports = { getPendingUsers };
+const approveUser = catchAsync(async (req, res) => {
+    const user = await adminService.approveUser(req.params.userId, req.body.creditLimit);
+    res.send(user);
+});
+
+const rejectUser = catchAsync(async (req, res) => {
+    const user = await adminService.rejectUser(req.params.userId);
+    res.send(user);
+});
+
+const getUserDetails = catchAsync(async (req, res) => {
+    const user = await adminService.getUserDetails(req.params.userId);
+    res.send(user);
+});
+
+module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails };

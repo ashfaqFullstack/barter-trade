@@ -56,5 +56,5 @@ module.exports = {
     refreshTokens,
     forgotPassword,
     resetPassword,
-    verifyEmail,
+    verifyEmail
 };

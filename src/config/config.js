@@ -24,6 +24,7 @@ const envVarsSchema = Joi.object()
         CLOUDINARY_CLOUD_NAME: Joi.string().description('cloudinary cloud name'),
         CLOUDINARY_API_KEY: Joi.string().description('cloudinary api key'),
         CLOUDINARY_API_SECRET: Joi.string().description('cloudinary api secret'),
+        DEFAULT_STARTING_CREDIT_LIMIT: Joi.number().default(1000)
     })
     .unknown();
 
@@ -63,5 +64,8 @@ module.exports = {
         cloudName: envVars.CLOUDINARY_CLOUD_NAME,
         apiKey: envVars.CLOUDINARY_API_KEY,
         apiSecret: envVars.CLOUDINARY_API_SECRET,
+    },
+    wallet: {
+        defaultCreditLimit: envVars.DEFAULT_STARTING_CREDIT_LIMIT,
     },
 };

@@ -15,4 +15,18 @@ const sendOtpEmail = async (to, otp) => {
     logger.info(`OTP email sent to ${to}`);
 };
 
-module.exports = { sendEmail, sendOtpEmail };
+const sendApprovalEmail = async (to, name) => {
+    const subject = 'Your Account Has Been Approved!';
+    const text = `Hi ${name},\n\nGreat news! Your account has been approved. You can now log in and start trading.\n\nWelcome aboard!`;
+    await sendEmail(to, subject, text);
+    logger.info(`Approval email sent to ${to}`);
+};
+
+const sendRejectionEmail = async (to, name) => {
+    const subject = 'Update on Your Application';
+    const text = `Hi ${name},\n\nUnfortunately, we were unable to approve your account at this time. If you believe this is a mistake, please contact our support team.\n\nThank you.`;
+    await sendEmail(to, subject, text);
+    logger.info(`Rejection email sent to ${to}`);
+};
+
+module.exports = { sendEmail, sendOtpEmail, sendApprovalEmail, sendRejectionEmail };
