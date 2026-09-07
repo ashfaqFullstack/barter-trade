@@ -126,6 +126,7 @@ model BusinessProfile {
   phone              String?
   address            String?
   city               String?
+  country            String?
   logoUrl            String?
   verificationStatus ApprovalStatus @default(PENDING)
   verifiedAt         DateTime?
@@ -158,6 +159,7 @@ model CustomerProfile {
   id             String   @id @default(uuid())
   userId         String   @unique
   phone          String?
+  country        String?
   address        String?
   city           String?
   profilePicture String?
