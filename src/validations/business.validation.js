@@ -7,6 +7,7 @@ const completeProfile = {
         phone: Joi.string(),
         address: Joi.string(),
         city: Joi.string(),
+        country:Joi.string()
     }),
 };
 

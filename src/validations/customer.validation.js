@@ -6,6 +6,7 @@ const completeProfile = {
         address: Joi.string(),
         city: Joi.string(),
         profilePicture: Joi.string(),
+        country: Joi.string()
     }),
 };
 
