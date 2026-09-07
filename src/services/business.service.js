@@ -1,7 +1,7 @@
 const httpStatus = require('http-status');
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
-// const { cloudinaryService } = require('./cloudinary.service');
+const httpStatus = require('http-status').default;
 const cloudinaryService = require('./cloudinary.service');
 
 const getUploadSignature = () => cloudinaryService.generateUploadSignature();
