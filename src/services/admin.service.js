@@ -1,4 +1,5 @@
 const { cloudinaryService, emailService } = require('.');
+const config = require('../config/config');
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status').default;
