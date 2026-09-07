@@ -18,7 +18,10 @@ app.use(helmet());
 app.use(express.json());
 
 // cors origin security
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+}));
 app.use(cookieParser());
 
 app.use(passport.initialize());

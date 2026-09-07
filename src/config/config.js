@@ -24,7 +24,8 @@ const envVarsSchema = Joi.object()
         CLOUDINARY_CLOUD_NAME: Joi.string().description('cloudinary cloud name'),
         CLOUDINARY_API_KEY: Joi.string().description('cloudinary api key'),
         CLOUDINARY_API_SECRET: Joi.string().description('cloudinary api secret'),
-        DEFAULT_STARTING_CREDIT_LIMIT: Joi.number().default(1000)
+        DEFAULT_STARTING_CREDIT_LIMIT: Joi.number().default(1000),
+        FRONTEND_URL: Joi.string().required().description('Frontend URL for CORS configuration'),
     })
     .unknown();
 
@@ -68,4 +69,5 @@ module.exports = {
     wallet: {
         defaultCreditLimit: envVars.DEFAULT_STARTING_CREDIT_LIMIT,
     },
+    frontendUrl: envVars.FRONTEND_URL,
 };
