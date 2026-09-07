@@ -1,7 +1,7 @@
 const { cloudinaryService, emailService } = require('.');
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
-const httpStatus = require('http-status');
+const httpStatus = require('http-status').default;
 
 
 const getPendingUsers = async (filter, options) => {
