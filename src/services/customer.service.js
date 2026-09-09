@@ -2,12 +2,12 @@ const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 
-const completeCustomerProfile = async (userId, body) => {
-    const existing = await prisma.customerProfile.findUnique({ where: { userId } });
-    if (existing) {
-        throw new ApiError(httpStatus.BAD_REQUEST, 'Customer profile already exists');
-    }
-    return prisma.customerProfile.create({ data: { userId, ...body } });
+const completeCustomerProfile = async (userId, data) => {
+    return prisma.customerProfile.upsert({
+        where: { userId },
+        create: { userId, ...data },
+        update: data,
+    });
 };
 
 const getMyCustomerProfile = async (userId) => {

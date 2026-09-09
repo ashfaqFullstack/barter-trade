@@ -5,14 +5,11 @@ const cloudinaryService = require('./cloudinary.service');
 
 const getUploadSignature = () => cloudinaryService.generateUploadSignature();
 
-const completeBusinessProfile = async (userId, body) => {
-    const existing = await prisma.businessProfile.findUnique({ where: { userId } });
-    console.log('existing profile:', existing);
-    if (existing) {
-        throw new ApiError(httpStatus.BAD_REQUEST, 'Business profile already exists');
-    }
-    return prisma.businessProfile.create({
-        data: { userId, ...body },
+const completeBusinessProfile = async (userId, data) => {
+    return prisma.businessProfile.upsert({
+        where: { userId },
+        create: { userId, ...data },
+        update: data,
     });
 };
 

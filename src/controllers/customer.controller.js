@@ -4,7 +4,7 @@ const customerService = require('../services/customer.service');
 
 const completeProfile = catchAsync(async (req, res) => {
     const profile = await customerService.completeCustomerProfile(req.user.id, req.body);
-    res.status(httpStatus.CREATED).send(profile);
+    res.status(httpStatus.OK).send(profile);
 });
 
 const getMyProfile = catchAsync(async (req, res) => {

@@ -21,6 +21,12 @@ enum Role {
   ADMIN
 }
 
+enum MembershipTier {
+  STANDARD
+  GOLD
+  PLATINUM
+}
+
 enum ApprovalStatus {
   PENDING
   APPROVED
@@ -119,15 +125,28 @@ model User {
 // Separate table so a business can have multiple documents without
 // bloating the User row.
 model BusinessProfile {
-  id                 String         @id @default(uuid())
-  userId             String         @unique
-  businessName       String
-  category           String
-  phone              String?
-  address            String?
-  city               String?
-  country            String?
-  logoUrl            String?
+  id                         String         @id @default(uuid())
+  userId                     String         @unique
+  businessName               String?
+  tradingName                String?
+  businessRegistrationNumber String?
+  category                   String?
+  website                    String?
+  phone                      String?
+  country                    String?
+  address                    String?
+  city                       String?
+  logoUrl                    String?
+
+
+    // Contact person (secondary, optional)
+  secondaryContactName  String?
+  secondaryContactPhone String?
+  secondaryContactEmail String?
+
+  // Requested membership tier — final creditLimit is still set by admin at approval
+  membershipTier MembershipTier?
+
   verificationStatus ApprovalStatus @default(PENDING)
   verifiedAt         DateTime?
 
@@ -163,6 +182,7 @@ model CustomerProfile {
   address        String?
   city           String?
   profilePicture String?
+  membershipTier MembershipTier?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

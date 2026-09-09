@@ -4,7 +4,7 @@ const catchAsync = require('../utils/catchAsync');
 
 const completeProfile = catchAsync(async (req, res) => {
     const profile = await businessService.completeBusinessProfile(req.user.id, req.body);
-    res.status(httpStatus.CREATED).send(profile);
+    res.status(httpStatus.OK).send(profile);
 });
 
 const getUploadSignature = catchAsync(async (req, res) => {

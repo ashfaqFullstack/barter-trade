@@ -1,13 +1,25 @@
 const Joi = require('joi');
 
-const completeProfile = {
+const saveStep = {
     body: Joi.object().keys({
-        businessName: Joi.string().required(),
-        category: Joi.string().required(),
-        phone: Joi.string(),
+        // Step 1: Business Details
+        businessName: Joi.string(),
+        tradingName: Joi.string().allow(''),
+        businessRegistrationNumber: Joi.string().allow(''),
+        category: Joi.string(),
+        website: Joi.string().uri().allow(''),
+        country: Joi.string(),
         address: Joi.string(),
         city: Joi.string(),
-        country:Joi.string()
+
+        // Step 2: Contact Details
+        phone: Joi.string(),
+        secondaryContactName: Joi.string().allow(''),
+        secondaryContactPhone: Joi.string().allow(''),
+        secondaryContactEmail: Joi.string().email().allow(''),
+
+        // Step 3: Membership
+        membershipTier: Joi.string().valid('STANDARD', 'GOLD', 'PLATINUM'),
     }),
 };
 
@@ -18,7 +30,7 @@ const saveDocuments = {
                 Joi.object().keys({
                     url: Joi.string().required(),
                     publicId: Joi.string().required(),
-                    fileType: Joi.string().required(),
+                    fileType: Joi.string().valid('PHOTO_ID', 'PROOF_OF_ADDRESS').required(),
                 })
             )
             .min(1)
@@ -26,4 +38,4 @@ const saveDocuments = {
     }),
 };
 
-module.exports = { completeProfile, saveDocuments };
+module.exports = { saveStep, saveDocuments };
