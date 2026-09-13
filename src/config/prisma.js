@@ -17,8 +17,6 @@ const isProduction = process.env.NODE_ENV === 'production';
  */
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    // connectionString: 'postgresql://neondb_owner:npg_OES4w2nTgRKi@ep-holy-pine-aewil6td-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=verify_full&channel_binding=require',
-
     ssl: isProduction ? { rejectUnauthorized: false } : false,
     max: 1, // Vercel serverless — keep pool size at 1
 });
