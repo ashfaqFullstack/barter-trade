@@ -15,7 +15,7 @@ const approveUser = catchAsync(async (req, res) => {
 });
 
 const rejectUser = catchAsync(async (req, res) => {
-    const user = await adminService.rejectUser(req.params.userId);
+    const user = await adminService.rejectUser(req.params.userId, req.body.reason);
     res.send(user);
 });
 

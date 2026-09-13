@@ -22,11 +22,13 @@ const sendApprovalEmail = async (to, name) => {
     logger.info(`Approval email sent to ${to}`);
 };
 
-const sendRejectionEmail = async (to, name) => {
+const sendRejectionEmail = async (to, name, reason) => {
     const subject = 'Update on Your Application';
-    const text = `Hi ${name},\n\nUnfortunately, we were unable to approve your account at this time. If you believe this is a mistake, please contact our support team.\n\nThank you.`;
+    const text = `Hi ${name},\n\nUnfortunately, we were unable to approve your account at this time.\n\nReason: ${reason}\n\nIf you believe this is a mistake, please contact our support team.\n\nThank you.`;
     await sendEmail(to, subject, text);
     logger.info(`Rejection email sent to ${to}`);
 };
+
+
 
 module.exports = { sendEmail, sendOtpEmail, sendApprovalEmail, sendRejectionEmail };

@@ -84,7 +84,7 @@ const approveUser = async (userId, creditLimit) => {
     return updatedUser;
 };
 
-const rejectUser = async (userId) => {
+const rejectUser = async (userId, reason) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
@@ -94,11 +94,16 @@ const rejectUser = async (userId) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Only pending users can be rejected');
     }
 
-    return prisma.user.update({
+    const updatedUser = await prisma.user.update({
         where: { id: userId },
-        data: { status: 'REJECTED' },
+        data: { status: 'REJECTED', rejectionReason: reason },
     });
+
+    await emailService.sendRejectionEmail(updatedUser.email, updatedUser.name, reason);
+
+    return updatedUser;
 };
+
 
 const getUserDetails = async (userId) => {
     const user = await prisma.user.findUnique({
@@ -113,6 +118,7 @@ const getUserDetails = async (userId) => {
             createdAt: true,
             businessProfile: { include: { documents: true } },
             customerProfile: true,
+            rejectionReason: true
         },
     });
 

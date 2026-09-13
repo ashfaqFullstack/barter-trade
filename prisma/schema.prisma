@@ -99,6 +99,7 @@ model User {
   passwordResetOtps PasswordResetOtp[]
   country   String? // used for currency display + filters
   status    ApprovalStatus @default(PENDING)
+  rejectionReason  String?
 
   // Transaction PIN security (separate from login password)
   transactionPin   String? // bcrypt-hashed, set after approval
