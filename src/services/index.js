@@ -7,3 +7,7 @@ module.exports.businessService = require('./business.service');
 module.exports.cloudinaryService = require('./cloudinary.service');
 module.exports.customerService = require('./customer.service');
 module.exports.adminService = require('./admin.service');
+module.exports.walletService = require('./wallet.service')
+module.exports.qrService = require('./qr.service')
+module.exports.transactionService = require('./transaction.service')
+module.exports.companyAccountService = require('./companyAccount.service')

@@ -29,6 +29,11 @@ const sendRejectionEmail = async (to, name, reason) => {
     logger.info(`Rejection email sent to ${to}`);
 };
 
+const sendPinResetOtpEmail = async (to, otp) => {
+    const subject = 'Reset Your Transaction PIN';
+    const text = `Your OTP to reset your transaction PIN is: ${otp}\nThis code expires in 10 minutes.`;
+    await sendEmail(to, subject, text);
+    logger.info(`PIN reset OTP sent to ${to}`);
+};
 
-
-module.exports = { sendEmail, sendOtpEmail, sendApprovalEmail, sendRejectionEmail };
+module.exports = { sendEmail, sendOtpEmail, sendApprovalEmail, sendRejectionEmail, sendPinResetOtpEmail };

@@ -26,6 +26,10 @@ const envVarsSchema = Joi.object()
         CLOUDINARY_API_SECRET: Joi.string().description('cloudinary api secret'),
         DEFAULT_STARTING_CREDIT_LIMIT: Joi.number().default(1000),
         FRONTEND_URL: Joi.string().required().description('Frontend URL for CORS configuration'),
+        PIN_MAX_ATTEMPTS: Joi.number().default(5),
+        PIN_LOCK_MINUTES: Joi.number().default(15),
+        TRADE_COMMISSION_PERCENT: Joi.number().default(5),
+        COMPANY_ACCOUNT_ID: Joi.string().default('company-account-main'),
     })
     .unknown();
 
@@ -70,4 +74,12 @@ module.exports = {
         defaultCreditLimit: envVars.DEFAULT_STARTING_CREDIT_LIMIT,
     },
     frontendUrl: envVars.FRONTEND_URL,
+    pin: {
+        maxAttempts: envVars.PIN_MAX_ATTEMPTS,
+        lockMinutes: envVars.PIN_LOCK_MINUTES,
+    },
+    trade: {
+        commissionPercent: envVars.TRADE_COMMISSION_PERCENT,
+    },
+    companyAccountId: envVars.COMPANY_ACCOUNT_ID,
 };

@@ -4,6 +4,9 @@ const authRoute = require('./auth.route')
 const businessRoute = require('./business.route');
 const customerRoute = require('./customer.route');
 const adminRoute = require('./admin.route');
+const walletRoute = require('./wallet.route')
+const transactionRoute = require('./transaction.route');
+
 const router = express.Router();
 
 const defaultRoutes = [
@@ -26,6 +29,14 @@ const defaultRoutes = [
     {
         path: '/admin',
         route: adminRoute,
+    },
+    {
+        path: '/wallet',
+        route: walletRoute,
+    },
+    {
+        path: '/transactions',
+        route: transactionRoute,
     },
 ];
 
