@@ -6,6 +6,9 @@ const customerRoute = require('./customer.route');
 const adminRoute = require('./admin.route');
 const walletRoute = require('./wallet.route')
 const transactionRoute = require('./transaction.route');
+const listingRoute = require('./listing.route');
+const orderRoute = require('./order.route');
+const barterRoute = require('./barter.route');
 
 const router = express.Router();
 
@@ -37,6 +40,18 @@ const defaultRoutes = [
     {
         path: '/transactions',
         route: transactionRoute,
+    },
+    {
+        path: '/listings',
+        route: listingRoute,
+    },
+    {
+        path: '/orders',
+        route: orderRoute
+    },
+    {
+        path: '/barter-offers',
+        route: barterRoute
     },
 ];
 

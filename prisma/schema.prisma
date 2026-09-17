@@ -37,6 +37,7 @@ enum ApprovalStatus {
 enum ListingStatus {
   ACTIVE
   PAUSED
+  TRADED
 }
 
 enum TransactionStatus {
@@ -47,6 +48,19 @@ enum TransactionStatus {
 enum FeeType {
   MONTHLY_FEE
   TRADE_COMMISSION
+}
+
+enum OrderStatus {
+  ESCROW_HELD
+  COMPLETED
+  CANCELLED
+}
+
+enum BarterOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
 }
 
 // ----------------------------------------------------------
@@ -119,6 +133,11 @@ model User {
   monthlyFeeLogs    MonthlyFeeLog[]
   pinResetTokens    PinResetToken[]
   currencyRateEdits CountryCurrencyRate[] @relation("RateUpdatedBy")
+
+  ordersAsBuyer  Order[] @relation("OrderBuyer")
+  ordersAsSeller Order[] @relation("OrderSeller")
+  barterOffersMade     BarterOffer[] @relation("BarterOfferer")
+  barterOffersReceived BarterOffer[] @relation("BarterTargetOwner")
 
   @@map("users")
 }
@@ -231,11 +250,16 @@ model Listing {
   description String
   price       Decimal       @db.Decimal(14, 2) // in Trade Dollars
   category    String
-  imageUrl    String?
+  imageUrls   String[]      @default([])
   status      ListingStatus @default(ACTIVE)
+  isPublic    Boolean       @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  ordersFor          Order[]
+  barterOffersFrom   BarterOffer[] @relation("OffererListing")
+  barterOffersTarget BarterOffer[] @relation("TargetListing")
 
   business User @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
@@ -321,4 +345,48 @@ model CountryCurrencyRate {
   updatedBy User? @relation("RateUpdatedBy", fields: [updatedById], references: [id])
 
   @@map("country_currency_rates")
+}
+
+
+
+model Order {
+  id                String      @id @default(uuid())
+  listingId         String
+  buyerId           String
+  sellerId          String
+  amount            Decimal     @db.Decimal(14, 2)
+  commissionBuyer   Decimal     @db.Decimal(14, 2)
+  commissionSeller  Decimal     @db.Decimal(14, 2)
+  netAmountToSeller Decimal     @db.Decimal(14, 2)
+  status            OrderStatus @default(ESCROW_HELD)
+  receiptId         String?     @unique
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  buyer   User    @relation("OrderBuyer", fields: [buyerId], references: [id])
+  seller  User    @relation("OrderSeller", fields: [sellerId], references: [id])
+
+  @@map("orders")
+}
+
+model BarterOffer {
+  id               String            @id @default(uuid())
+  offererListingId String
+  offererId        String
+  targetListingId  String
+  targetOwnerId    String
+  status           BarterOfferStatus @default(PENDING)
+
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  offererListing Listing @relation("OffererListing", fields: [offererListingId], references: [id])
+  targetListing  Listing @relation("TargetListing", fields: [targetListingId], references: [id])
+  offerer        User    @relation("BarterOfferer", fields: [offererId], references: [id])
+  targetOwner    User    @relation("BarterTargetOwner", fields: [targetOwnerId], references: [id])
+
+  @@map("barter_offers")
 }

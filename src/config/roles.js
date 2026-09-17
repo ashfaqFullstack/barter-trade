@@ -13,7 +13,7 @@
 // }
 
 const allRoles = {
-    CUSTOMER: ['sendTrade', 'manageOwnWallet'],
+    CUSTOMER: ['sendTrade', 'manageOwnWallet', 'manageOwnListings'],
     BUSINESS: ['sendTrade', 'manageOwnWallet', 'manageOwnListings'],
     ADMIN: [
         'manageUsers',
