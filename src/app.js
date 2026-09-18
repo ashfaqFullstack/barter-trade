@@ -19,7 +19,7 @@ app.use(express.json());
 
 // cors origin security
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://192.168.1.11:3000'],
+    origin: process.env.FRONTEND_URL,
     credentials: true,
 }));
 app.use(cookieParser());
