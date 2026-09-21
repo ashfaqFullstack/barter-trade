@@ -8,3 +8,5 @@ module.exports.transactionController = require('./transaction.controller')
 module.exports.listingController = require('./listing.controller')
 module.exports.orderController = require('./order.controller')
 module.exports.barterController = require('./barter.controller')
+module.exports.currencyController = require('./currency.controller');
+module.exports.reportController = require('./report.controller')

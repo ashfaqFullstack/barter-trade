@@ -24,4 +24,28 @@ const getUserDetails = catchAsync(async (req, res) => {
     res.send(user);
 });
 
-module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails };
+
+const getAllUsers = catchAsync(async (req, res) => {
+    const result = await adminService.getAllUsers(req.query);
+    res.send(result);
+});
+
+const blockUser = catchAsync(async (req, res) => {
+    const user = await adminService.blockUser(req.params.userId);
+    res.send(user);
+});
+
+const unblockUser = catchAsync(async (req, res) => {
+    const user = await adminService.unblockUser(req.params.userId);
+    res.send(user);
+});
+
+module.exports = {
+    getPendingUsers,
+    approveUser,
+    rejectUser,
+    getUserDetails,
+    getAllUsers,
+    blockUser,
+    unblockUser,
+};

@@ -9,7 +9,8 @@ const transactionRoute = require('./transaction.route');
 const listingRoute = require('./listing.route');
 const orderRoute = require('./order.route');
 const barterRoute = require('./barter.route');
-
+const currencyRoute = require('./currency.route')
+const reportRoute = require('./report.route')
 const router = express.Router();
 
 const defaultRoutes = [
@@ -52,6 +53,14 @@ const defaultRoutes = [
     {
         path: '/barter-offers',
         route: barterRoute
+    },
+    {
+        path: '/currency-rates',
+        route: currencyRoute,
+    },
+    {
+        path: '/admin',
+        route: reportRoute
     },
 ];
 

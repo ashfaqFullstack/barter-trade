@@ -135,6 +135,75 @@ const getUserDetails = async (userId) => {
 
     return user;
 };
+const getAllUsers = async (filters) => {
+    const { role, status, search, page = 1, limit = 10 } = filters;
 
-module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails };
+    const where = {
+        ...(role && { role }),
+        ...(status && { status }),
+        ...(search && {
+            OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+            ],
+        }),
+    };
 
+    const [results, total] = await Promise.all([
+        prisma.user.findMany({
+            where,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                status: true,
+                country: true,
+                createdAt: true,
+                businessProfile: { select: { businessName: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: Number(limit),
+        }),
+        prisma.user.count({ where }),
+    ]);
+
+    return {
+        results,
+        page: Number(page),
+        limit: Number(limit),
+        totalResults: total,
+        totalPages: Math.ceil(total / limit),
+    };
+};
+
+const blockUser = async (userId) => {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    if (user.role === 'ADMIN') throw new ApiError(httpStatus.BAD_REQUEST, 'Cannot block an admin account');
+    if (user.status === 'BLOCKED') throw new ApiError(httpStatus.BAD_REQUEST, 'User is already blocked');
+
+    // Blocking should also kill any active sessions immediately.
+    await prisma.token.deleteMany({ where: { userId } });
+
+    return prisma.user.update({ where: { id: userId }, data: { status: 'BLOCKED' } });
+};
+
+const unblockUser = async (userId) => {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    if (user.status !== 'BLOCKED') throw new ApiError(httpStatus.BAD_REQUEST, 'User is not blocked');
+
+    return prisma.user.update({ where: { id: userId }, data: { status: 'APPROVED' } });
+};
+
+module.exports = {
+    getPendingUsers,
+    approveUser,
+    rejectUser,
+    getUserDetails,
+    getAllUsers,
+    blockUser,
+    unblockUser,
+};

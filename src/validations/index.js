@@ -8,3 +8,5 @@ module.exports.transactionValidation = require('./transaction.validation')
 module.exports.listingValidation = require('./listings.validation')
 module.exports.orderValidation = require('./order.validation')
 module.exports.barterValidation = require('./barter.validation')
+module.exports.reportValidation = require('./report.validation')
+module.exports.currencyValidation = require('./currency.validation');

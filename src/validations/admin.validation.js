@@ -32,6 +32,20 @@ const getUserDetails = {
     }),
 };
 
+const getAllUsers = {
+    query: Joi.object().keys({
+        role: Joi.string().valid('CUSTOMER', 'BUSINESS', 'ADMIN'),
+        status: Joi.string().valid('PENDING', 'APPROVED', 'REJECTED', 'BLOCKED'),
+        search: Joi.string(),
+        page: Joi.number().integer().default(1),
+        limit: Joi.number().integer().default(10),
+    }),
+};
 
+const userIdParam = {
+    params: Joi.object().keys({
+        userId: Joi.string().uuid().required(),
+    }),
+};
 
-module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails };
+module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails, getAllUsers, userIdParam };

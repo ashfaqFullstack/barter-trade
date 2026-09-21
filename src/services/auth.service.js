@@ -15,6 +15,9 @@ const bcrypt = require('bcrypt');
  */
 const loginUserWithEmailandPassword = async (email, password) => {
     const user = await userService.getUserByEmail(email);
+    if (user.status === 'BLOCKED') {
+        throw new ApiError(httpStatus.FORBIDDEN, 'Your account has been blocked. Please contact support.');
+    }
     if (!user || !(await UserModel.isPasswordMatch(password, user.password))) {
         throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect credentials');
     }
