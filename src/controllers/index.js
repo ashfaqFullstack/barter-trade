@@ -10,3 +10,4 @@ module.exports.orderController = require('./order.controller')
 module.exports.barterController = require('./barter.controller')
 module.exports.currencyController = require('./currency.controller');
 module.exports.reportController = require('./report.controller')
+module.exports.dashboardController = require('./dashboard.controller');

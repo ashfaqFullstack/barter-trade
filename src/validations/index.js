@@ -10,3 +10,4 @@ module.exports.orderValidation = require('./order.validation')
 module.exports.barterValidation = require('./barter.validation')
 module.exports.reportValidation = require('./report.validation')
 module.exports.currencyValidation = require('./currency.validation');
+module.exports.dashboardValidation = require('./dashboard.validation');

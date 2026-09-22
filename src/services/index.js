@@ -15,3 +15,4 @@ module.exports.orderService = require('./order.service')
 module.exports.barterService = require('./barter.service')
 module.exports.currencyService = require('./currency.service')
 module.exports.reportService = require('./report.service')
+module.exports.dashboardService = require('./dashboard.service');

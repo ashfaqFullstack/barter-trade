@@ -11,6 +11,7 @@ const orderRoute = require('./order.route');
 const barterRoute = require('./barter.route');
 const currencyRoute = require('./currency.route')
 const reportRoute = require('./report.route')
+const dashboardRoute = require('./dashboard.route');
 const router = express.Router();
 
 const defaultRoutes = [
@@ -61,6 +62,10 @@ const defaultRoutes = [
     {
         path: '/admin',
         route: reportRoute
+    },
+    {
+        path: '/dashboard',
+        route: dashboardRoute,
     },
 ];
 
