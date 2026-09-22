@@ -22,6 +22,7 @@ const updateListing = {
         category: Joi.string(),
         imageUrls: Joi.array().items(Joi.string()),
         status: Joi.string().valid('ACTIVE', 'PAUSED'),
+        isPublic: Joi.boolean(),
     }),
 };
 
