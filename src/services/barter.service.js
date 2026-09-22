@@ -1,6 +1,7 @@
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
+const emailService = require('./email.service');
 
 const createOffer = async (offererId, offererListingId, targetListingId) => {
     const [offererListing, targetListing] = await Promise.all([
@@ -21,7 +22,7 @@ const createOffer = async (offererId, offererListingId, targetListingId) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Your listing must be active to make an offer');
     }
 
-    return prisma.barterOffer.create({
+    const offer = await prisma.barterOffer.create({
         data: {
             offererListingId,
             offererId,
@@ -29,6 +30,17 @@ const createOffer = async (offererId, offererListingId, targetListingId) => {
             targetOwnerId: targetListing.businessId,
         },
     });
+
+    const [offerer, targetOwner] = await Promise.all([
+        prisma.user.findUnique({ where: { id: offer.offererId }, select: { email: true } }),
+        prisma.user.findUnique({ where: { id: offer.targetOwnerId }, select: { email: true } }),
+    ]);
+    await Promise.all([
+        emailService.sendBarterOfferSentEmail(offerer.email),
+        emailService.sendBarterOfferReceivedEmail(targetOwner.email),
+    ]);
+
+    return offer;
 };
 
 const acceptOffer = async (targetOwnerId, offerId) => {

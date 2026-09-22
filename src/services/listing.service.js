@@ -1,16 +1,20 @@
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
+const emailService = require('./email.service');
 
 
 const createListing = async (userId, data) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, email: true } });
 
     const isPublic = data.isPublic !== undefined ? data.isPublic : user.role === 'BUSINESS';
 
-    return prisma.listing.create({
+    const listing = await prisma.listing.create({
         data: { businessId: userId, ...data, isPublic },
     });
+
+    await emailService.sendListingAddedEmail(user.email, listing.title);
+    return listing;
 };
 
 

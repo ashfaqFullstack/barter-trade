@@ -4,6 +4,7 @@ const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
+const emailService = require('./email.service');
 
 const createOrder = async (buyerId, listingId, pin) => {
     const listing = await prisma.listing.findUnique({ where: { id: listingId } });
@@ -34,7 +35,7 @@ const createOrder = async (buyerId, listingId, pin) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient balance / credit limit for this order');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx) => {
         // Debit buyer now — funds are "held" (not yet credited to seller/company)
         await tx.wallet.update({
             where: { userId: buyerId },
@@ -57,6 +58,17 @@ const createOrder = async (buyerId, listingId, pin) => {
             },
         });
     });
+
+    const [buyer, seller] = await Promise.all([
+        prisma.user.findUnique({ where: { id: order.buyerId }, select: { email: true } }),
+        prisma.user.findUnique({ where: { id: order.sellerId }, select: { email: true } }),
+    ]);
+    await Promise.all([
+        emailService.sendOrderPlacedEmail(buyer.email),
+        emailService.sendNewOrderReceivedEmail(seller.email),
+    ]);
+
+    return order;
 };
 
 const completeOrder = async (buyerId, orderId) => {
