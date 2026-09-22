@@ -3,7 +3,7 @@ const config = require("../config/config");
 const cookieOptions = {
     httpOnly: true,
     secure: true,
-    sameSite: 'none'
+    sameSite: 'lax'
 };
 
 const setAuthCookies = (res, tokens) => {
