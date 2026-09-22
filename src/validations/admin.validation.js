@@ -48,4 +48,10 @@ const userIdParam = {
     }),
 };
 
-module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails, getAllUsers, userIdParam };
+const fundWallet = {
+    body: Joi.object().keys({
+        amount: Joi.number().positive().required(),
+    }),
+};
+
+module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails, getAllUsers, userIdParam, fundWallet };

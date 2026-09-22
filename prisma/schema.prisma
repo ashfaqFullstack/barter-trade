@@ -103,6 +103,21 @@ model PasswordResetOtp {
   @@map("password_reset_otps")
 }
 
+
+
+model CompanyFundingLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  @@map("company_funding_logs")
+}
+
+
+
 model User {
   id        String         @id @default(uuid())
   name      String
@@ -133,6 +148,8 @@ model User {
   monthlyFeeLogs    MonthlyFeeLog[]
   pinResetTokens    PinResetToken[]
   currencyRateEdits CountryCurrencyRate[] @relation("RateUpdatedBy")
+
+  companyFundingLogs CompanyFundingLog[]
 
   ordersAsBuyer  Order[] @relation("OrderBuyer")
   ordersAsSeller Order[] @relation("OrderSeller")
@@ -390,3 +407,4 @@ model BarterOffer {
 
   @@map("barter_offers")
 }
+

@@ -198,6 +198,35 @@ const unblockUser = async (userId) => {
     return prisma.user.update({ where: { id: userId }, data: { status: 'APPROVED' } });
 };
 
+const companyAccountService = require('./companyAccount.service');
+
+const fundAdminWallet = async (adminId, amount) => {
+    const companyAccount = await companyAccountService.getOrCreateCompanyAccount();
+
+    if (Number(companyAccount.totalBalance) < amount) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient company account balance');
+    }
+
+    return prisma.$transaction(async (tx) => {
+        await tx.companyAccount.update({
+            where: { id: companyAccountService.ACCOUNT_ID },
+            data: { totalBalance: { decrement: amount } },
+        });
+
+        const wallet = await tx.wallet.upsert({
+            where: { userId: adminId },
+            create: { userId: adminId, balance: amount, creditLimit: 0 },
+            update: { balance: { increment: amount } },
+        });
+
+        await tx.companyFundingLog.create({
+            data: { adminId, amount },
+        });
+
+        return wallet;
+    });
+};
+
 module.exports = {
     getPendingUsers,
     approveUser,
@@ -206,4 +235,5 @@ module.exports = {
     getAllUsers,
     blockUser,
     unblockUser,
+    fundAdminWallet,
 };

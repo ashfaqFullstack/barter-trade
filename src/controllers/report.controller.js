@@ -21,4 +21,10 @@ const getDashboardStats = catchAsync(async (req, res) => {
     res.send(stats);
 });
 
-module.exports = { getCompanyAccount, getAllTransactions, getFeeLogs, getDashboardStats };
+const getSalesChart = catchAsync(async (req, res) => {
+    const days = req.query.days ? Number(req.query.days) : 7;
+    const data = await reportService.getSalesChart(days);
+    res.send(data);
+});
+
+module.exports = { getCompanyAccount, getAllTransactions, getFeeLogs, getDashboardStats, getSalesChart };

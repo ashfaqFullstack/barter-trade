@@ -40,6 +40,11 @@ const unblockUser = catchAsync(async (req, res) => {
     res.send(user);
 });
 
+const fundWallet = catchAsync(async (req, res) => {
+    const wallet = await adminService.fundAdminWallet(req.user.id, req.body.amount);
+    res.send(wallet);
+});
+
 module.exports = {
     getPendingUsers,
     approveUser,
@@ -48,4 +53,5 @@ module.exports = {
     getAllUsers,
     blockUser,
     unblockUser,
+    fundWallet,
 };
