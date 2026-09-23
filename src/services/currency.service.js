@@ -2,6 +2,34 @@ const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 
+const getUserCurrency = async (userId, client = prisma) => {
+    const user = await client.user.findUnique({
+        where: { id: userId },
+        select: {
+            country: true,
+            businessProfile: { select: { country: true } },
+            customerProfile: { select: { country: true } },
+        },
+    });
+
+    const country = user?.country || user?.businessProfile?.country || user?.customerProfile?.country;
+    if (!country) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Please set your country before transferring Trade Dollars');
+    }
+
+    const currency = await client.countryCurrencyRate.findUnique({ where: { countryName: country } });
+    if (!currency) {
+        throw new ApiError(httpStatus.BAD_REQUEST, `No currency rate configured for ${country}`);
+    }
+
+    return currency;
+};
+
+// Rates are quoted as units of a currency per USD. Convert through USD.
+const convertAmount = (amount, fromRate, toRate) => {
+    return Number((Number(amount) * Number(toRate) / Number(fromRate)).toFixed(2));
+};
+
 const getAllRates = async () => {
     return prisma.countryCurrencyRate.findMany({ orderBy: { countryName: 'asc' } });
 };
@@ -37,4 +65,4 @@ const deleteRate = async (rateId) => {
     await prisma.countryCurrencyRate.delete({ where: { id: rateId } });
 };
 
-module.exports = { getAllRates, createRate, updateRate, deleteRate };
+module.exports = { getAllRates, createRate, updateRate, deleteRate, getUserCurrency, convertAmount };

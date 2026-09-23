@@ -48,9 +48,13 @@ const deleteListing = async (businessId, listingId) => {
         listing._count.barterOffersFrom > 0 || listing._count.barterOffersTarget > 0 || listing._count.ordersFor > 0;
 
     if (hasHistory) {
-        // Can't hard-delete a listing with trade/offer history — archive it instead
-        // so existing orders/offers keep a valid reference.
-        return prisma.listing.update({ where: { id: listingId }, data: { status: 'PAUSED' } });
+        // Can't hard-delete a listing with trade/offer history — soft-delete it
+        // (isDeleted: true) so existing orders/offers keep a valid reference,
+        // but hide it from the owner's "My Listings" and public browse.
+        return prisma.listing.update({
+            where: { id: listingId },
+            data: { status: 'PAUSED', isDeleted: true },
+        });
     }
 
     await prisma.listing.delete({ where: { id: listingId } });
@@ -62,6 +66,7 @@ const getListings = async (filters) => {
     const where = {
         status: 'ACTIVE',
         isPublic: true,
+        isDeleted: false,
         ...(category && { category }),
         ...(country && { business: { businessProfile: { country } } }),
         ...(minPrice != null || maxPrice != null
@@ -132,7 +137,10 @@ const getListingById = async (listingId) => {
 };
 
 const getMyListings = async (businessId) => {
-    return prisma.listing.findMany({ where: { businessId }, orderBy: { createdAt: 'desc' } });
+    return prisma.listing.findMany({
+        where: { businessId, isDeleted: false },
+        orderBy: { createdAt: 'desc' },
+    });
 };
 
 module.exports = { createListing, updateListing, deleteListing, getListings, getListingById, getMyListings };

@@ -5,9 +5,13 @@ const ApiError = require('../utils/ApiError');
 const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const emailService = require('./email.service');
+const currencyService = require('./currency.service');
 
 const createOrder = async (buyerId, listingId, pin) => {
-    const listing = await prisma.listing.findUnique({ where: { id: listingId } });
+    const listing = await prisma.listing.findUnique({
+        where: { id: listingId },
+        include: { business: { select: { id: true } } },
+    });
 
     if (!listing || listing.status !== 'ACTIVE') {
         throw new ApiError(httpStatus.NOT_FOUND, 'Listing not available');
@@ -23,12 +27,17 @@ const createOrder = async (buyerId, listingId, pin) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Your wallet is not set up yet');
     }
 
+    const [buyerCurrency, sellerCurrency] = await Promise.all([
+        currencyService.getUserCurrency(buyerId),
+        currencyService.getUserCurrency(listing.businessId),
+    ]);
     const amount = Number(listing.price);
+    const buyerAmount = currencyService.convertAmount(amount, sellerCurrency.rate, buyerCurrency.rate);
     const commissionPercent = config.trade.commissionPercent;
-    const commissionBuyer = (amount * commissionPercent) / 100;
+    const commissionBuyer = (buyerAmount * commissionPercent) / 100;
     const commissionSeller = (amount * commissionPercent) / 100;
     const netAmountToSeller = amount - commissionSeller;
-    const totalDebit = amount + commissionBuyer;
+    const totalDebit = buyerAmount + commissionBuyer;
 
     const projectedBalance = Number(buyerWallet.balance) - totalDebit;
     if (projectedBalance < -Number(buyerWallet.creditLimit)) {
@@ -51,6 +60,11 @@ const createOrder = async (buyerId, listingId, pin) => {
                 buyerId,
                 sellerId: listing.businessId,
                 amount,
+                buyerAmount,
+                buyerCurrency: buyerCurrency.currencyCode,
+                sellerCurrency: sellerCurrency.currencyCode,
+                buyerRate: buyerCurrency.rate,
+                sellerRate: sellerCurrency.rate,
                 commissionBuyer,
                 commissionSeller,
                 netAmountToSeller,
@@ -84,13 +98,29 @@ const completeOrder = async (buyerId, orderId) => {
             data: { balance: { increment: order.netAmountToSeller } },
         });
 
-        await companyAccountService.creditCompanyAccount(tx, Number(order.commissionBuyer) + Number(order.commissionSeller));
+        const sellerCurrency = order.sellerRate
+            ? { rate: order.sellerRate }
+            : await currencyService.getUserCurrency(order.sellerId, tx);
+        const buyerCurrency = order.buyerRate
+            ? { rate: order.buyerRate }
+            : await currencyService.getUserCurrency(order.buyerId, tx);
+        const companyCommission = Number(order.commissionBuyer) + currencyService.convertAmount(
+            order.commissionSeller,
+            sellerCurrency.rate,
+            buyerCurrency.rate,
+        );
+        await companyAccountService.creditCompanyAccount(tx, companyCommission);
 
         const transaction = await tx.transaction.create({
             data: {
                 senderId: order.buyerId,
                 receiverId: order.sellerId,
-                amount: order.amount,
+                amount: order.buyerAmount ?? order.amount,
+                convertedAmount: order.amount,
+                senderCurrency: order.buyerCurrency,
+                receiverCurrency: order.sellerCurrency,
+                senderRate: order.buyerRate,
+                receiverRate: order.sellerRate,
                 commissionBuyer: order.commissionBuyer,
                 commissionSeller: order.commissionSeller,
                 netAmountToSeller: order.netAmountToSeller,
@@ -123,7 +153,7 @@ const cancelOrder = async (userId, orderId) => {
     }
     if (order.status !== 'ESCROW_HELD') throw new ApiError(httpStatus.BAD_REQUEST, 'Order cannot be cancelled');
 
-    const refundAmount = Number(order.amount) + Number(order.commissionBuyer);
+    const refundAmount = Number(order.buyerAmount ?? order.amount) + Number(order.commissionBuyer);
 
     return prisma.$transaction(async (tx) => {
         await tx.wallet.update({

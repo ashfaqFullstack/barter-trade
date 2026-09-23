@@ -270,6 +270,7 @@ model Listing {
   imageUrls   String[]      @default([])
   status      ListingStatus @default(ACTIVE)
   isPublic    Boolean       @default(true)
+  isDeleted   Boolean       @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -295,6 +296,11 @@ model Transaction {
   receiverId String
 
   amount           Decimal @db.Decimal(14, 2) // amount before commission
+  convertedAmount  Decimal? @db.Decimal(14, 2) // receiver-side amount before commission
+  senderCurrency   String?
+  receiverCurrency String?
+  senderRate       Decimal? @db.Decimal(14, 4)
+  receiverRate     Decimal? @db.Decimal(14, 4)
   commissionBuyer  Decimal @db.Decimal(14, 2) // 5% deducted from buyer
   commissionSeller Decimal @db.Decimal(14, 2) // 5% deducted from seller
   netAmountToSeller Decimal @db.Decimal(14, 2) // amount - commissionSeller
@@ -372,6 +378,11 @@ model Order {
   buyerId           String
   sellerId          String
   amount            Decimal     @db.Decimal(14, 2)
+  buyerAmount       Decimal?    @db.Decimal(14, 2) // amount debited from buyer after conversion
+  buyerCurrency     String?
+  sellerCurrency    String?
+  buyerRate         Decimal?    @db.Decimal(14, 4)
+  sellerRate        Decimal?    @db.Decimal(14, 4)
   commissionBuyer   Decimal     @db.Decimal(14, 2)
   commissionSeller  Decimal     @db.Decimal(14, 2)
   netAmountToSeller Decimal     @db.Decimal(14, 2)

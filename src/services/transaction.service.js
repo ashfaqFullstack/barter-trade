@@ -4,6 +4,7 @@ const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
+const currencyService = require('./currency.service');
 
 const sendTransaction = async (senderId, receiverId, amount, pin) => {
     if (senderId === receiverId) {
@@ -13,9 +14,11 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
     // 1. Verify PIN first — before touching any balance.
     await walletService.verifyPin(senderId, pin);
 
-    const [senderWallet, receiverWallet] = await Promise.all([
+    const [senderWallet, receiverWallet, senderCurrency, receiverCurrency] = await Promise.all([
         prisma.wallet.findUnique({ where: { userId: senderId } }),
         prisma.wallet.findUnique({ where: { userId: receiverId } }),
+        currencyService.getUserCurrency(senderId),
+        currencyService.getUserCurrency(receiverId),
     ]);
 
     if (!senderWallet) {
@@ -25,11 +28,12 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
         throw new ApiError(httpStatus.NOT_FOUND, 'Receiver wallet not found');
     }
 
+    const convertedAmount = currencyService.convertAmount(amount, senderCurrency.rate, receiverCurrency.rate);
     const commissionPercent = config.trade.commissionPercent;
-    const commissionBuyer = (amount * commissionPercent) / 100;
-    const commissionSeller = (amount * commissionPercent) / 100;
-    const netAmountToSeller = amount - commissionSeller;
-    const totalDebit = amount + commissionBuyer;
+    const commissionBuyer = (Number(amount) * commissionPercent) / 100;
+    const commissionSeller = (convertedAmount * commissionPercent) / 100;
+    const netAmountToSeller = convertedAmount - commissionSeller;
+    const totalDebit = Number(amount) + commissionBuyer;
 
     const projectedBalance = Number(senderWallet.balance) - totalDebit;
     const creditLimit = Number(senderWallet.creditLimit);
@@ -49,13 +53,24 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
             data: { balance: { increment: netAmountToSeller } },
         });
 
-        await companyAccountService.creditCompanyAccount(tx, commissionBuyer + commissionSeller);
+        // Keep the single company ledger in the sender's currency.
+        const companyCommission = commissionBuyer + currencyService.convertAmount(
+            commissionSeller,
+            receiverCurrency.rate,
+            senderCurrency.rate,
+        );
+        await companyAccountService.creditCompanyAccount(tx, companyCommission);
 
         const transaction = await tx.transaction.create({
             data: {
                 senderId,
                 receiverId,
                 amount,
+                convertedAmount,
+                senderCurrency: senderCurrency.currencyCode,
+                receiverCurrency: receiverCurrency.currencyCode,
+                senderRate: senderCurrency.rate,
+                receiverRate: receiverCurrency.rate,
                 commissionBuyer,
                 commissionSeller,
                 netAmountToSeller,

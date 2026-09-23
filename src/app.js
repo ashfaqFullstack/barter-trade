@@ -30,6 +30,7 @@ passport.use('jwt', jwtStrategy)
 
 // Api routes 👥
 app.use('/v1', routes)
+app.use('/api/backend', routes)
 
 
 // error handling middleware */ will be under the routes always 👍

@@ -8,6 +8,7 @@ const { businessController } = require('../../controllers');
 const router = express.Router();
 
 router.post('/profile', auth(), validate(businessValidation.saveStep), businessController.completeProfile);
+router.patch('/profile', auth(), validate(businessValidation.saveStep), businessController.completeProfile);
 router.get('/profile', auth(), businessController.getMyProfile);
 router.get('/documents/signature', auth(), businessController.getUploadSignature);
 router.post('/documents', auth(), validate(businessValidation.saveDocuments), businessController.saveDocuments);
