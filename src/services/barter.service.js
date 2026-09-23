@@ -103,14 +103,24 @@ const getReceivedOffers = async (targetOwnerId) => {
     });
 };
 
+const profileSelect = {
+    select: {
+        id: true,
+        name: true,
+        role: true,
+        businessProfile: { select: { businessName: true, city: true, address: true } },
+        customerProfile: { select: { city: true, address: true } },
+    },
+};
+
 const getOfferById = async (userId, offerId) => {
     const offer = await prisma.barterOffer.findUnique({
         where: { id: offerId },
         include: {
             offererListing: true,
             targetListing: true,
-            offerer: { select: { id: true, name: true, businessProfile: { select: { businessName: true } } } },
-            targetOwner: { select: { id: true, name: true, businessProfile: { select: { businessName: true } } } },
+            offerer: profileSelect,
+            targetOwner: profileSelect,
         },
     });
 

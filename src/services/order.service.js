@@ -139,11 +139,20 @@ const cancelOrder = async (userId, orderId) => {
         });
     });
 };
+const profileSelect = {
+    select: {
+        id: true,
+        name: true,
+        role: true,
+        businessProfile: { select: { businessName: true, city: true, address: true } },
+        customerProfile: { select: { city: true, address: true } },
+    },
+};
 
 const getMyOrders = async (buyerId) => {
     return prisma.order.findMany({
         where: { buyerId },
-        include: { listing: true, seller: { select: { id: true, name: true } } },
+        include: { listing: true, seller: profileSelect },
         orderBy: { createdAt: 'desc' },
     });
 };
@@ -151,7 +160,7 @@ const getMyOrders = async (buyerId) => {
 const getReceivedOrders = async (sellerId) => {
     return prisma.order.findMany({
         where: { sellerId },
-        include: { listing: true, buyer: { select: { id: true, name: true } } },
+        include: { listing: true, buyer: profileSelect },
         orderBy: { createdAt: 'desc' },
     });
 };
