@@ -2,6 +2,11 @@ const httpStatus = require('http-status').default;
 const catchAsync = require('../utils/catchAsync');
 const notificationService = require('../services/notification.service');
 
+const status = catchAsync(async (req, res) => {
+    const enabled = await notificationService.hasSubscription(req.user.id);
+    res.send({ enabled });
+});
+
 const subscribe = catchAsync(async (req, res) => {
     await notificationService.saveSubscription(req.user.id, req.body);
     res.status(httpStatus.CREATED).send({ message: 'Subscribed' });
@@ -12,4 +17,4 @@ const unsubscribe = catchAsync(async (req, res) => {
     res.status(httpStatus.NO_CONTENT).send();
 });
 
-module.exports = { subscribe, unsubscribe };
+module.exports = { status, subscribe, unsubscribe };

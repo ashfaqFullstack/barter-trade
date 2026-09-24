@@ -17,6 +17,15 @@ const removeSubscription = async (endpoint) => {
     await prisma.pushSubscription.deleteMany({ where: { endpoint } });
 };
 
+const hasSubscription = async (userId) => {
+    const subscription = await prisma.pushSubscription.findFirst({
+        where: { userId },
+        select: { endpoint: true },
+    });
+
+    return Boolean(subscription);
+};
+
 // title/body/url — url is where the notification click should navigate to.
 const sendPushToUser = async (userId, { title, body, url }) => {
     const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
@@ -39,4 +48,4 @@ const sendPushToUser = async (userId, { title, body, url }) => {
     );
 };
 
-module.exports = { saveSubscription, removeSubscription, sendPushToUser };
+module.exports = { saveSubscription, removeSubscription, hasSubscription, sendPushToUser };
