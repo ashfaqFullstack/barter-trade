@@ -6,7 +6,7 @@ const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const emailService = require('./email.service');
 const currencyService = require('./currency.service');
-const { notificationService } = require('.');
+const { notificationService } = require('./notification.service');
 
 const createOrder = async (buyerId, listingId, pin) => {
     const listing = await prisma.listing.findUnique({
