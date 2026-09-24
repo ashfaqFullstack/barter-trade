@@ -6,6 +6,7 @@ const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const currencyService = require('./currency.service');
 const notificationService = require('./notification.service');
+const logger = require('../config/logger');
 
 const sendTransaction = async (senderId, receiverId, amount, pin) => {
     if (senderId === receiverId) {
@@ -43,7 +44,7 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient balance / credit limit for this transaction');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const transaction = await prisma.$transaction(async (tx) => {
         await tx.wallet.update({
             where: { userId: senderId },
             data: { balance: { decrement: totalDebit } },
@@ -87,14 +88,22 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
             ],
         });
 
+        return transaction;
+    });
+
+    // Push delivery is external work and must not keep the database transaction open.
+    try {
         await notificationService.sendPushToUser(receiverId, {
             title: 'Trade Dollars Received',
             body: `You received $${transaction.netAmountToSeller} trade dollars.`,
             url: '/dashboard/wallet/history',
         });
+    } catch (error) {
+        // The transfer is already committed; a notification failure must not undo it.
+        logger.error(`Trade notification failed: ${error.message}`);
+    }
 
-        return transaction;
-    });
+    return transaction;
 };
 
 const getReceipt = async (userId, receiptId) => {
