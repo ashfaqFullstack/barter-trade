@@ -54,4 +54,23 @@ const fundWallet = {
     }),
 };
 
-module.exports = { getPendingUsers, approveUser, rejectUser, getUserDetails, getAllUsers, userIdParam, fundWallet };
+const getProfileUpdateRequests = {
+    query: Joi.object().keys({
+        status: Joi.string().valid('PENDING', 'APPROVED', 'REJECTED').default('PENDING'),
+    }),
+};
+
+const rejectProfileUpdateRequest = {
+    params: Joi.object().keys({ requestId: Joi.string().uuid().required() }),
+    body: Joi.object().keys({ reason: Joi.string().required() }),
+};
+
+const requestIdParam = {
+    params: Joi.object().keys({ requestId: Joi.string().uuid().required() }),
+};
+
+module.exports = {
+    getPendingUsers, approveUser, rejectUser, getUserDetails, getAllUsers, userIdParam, fundWallet, getProfileUpdateRequests,
+    rejectProfileUpdateRequest,
+    requestIdParam,
+};

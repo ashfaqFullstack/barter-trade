@@ -207,7 +207,7 @@ const fundAdminWallet = async (adminId, amount) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient company account balance');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const updatedRequest = await prisma.$transaction(async (tx) => {
         await tx.companyAccount.update({
             where: { id: companyAccountService.ACCOUNT_ID },
             data: { totalBalance: { decrement: amount } },
@@ -227,6 +227,110 @@ const fundAdminWallet = async (adminId, amount) => {
     });
 };
 
+const getProfileUpdateRequests = async (status = 'PENDING') => {
+    return prisma.profileUpdateRequest.findMany({
+        where: { status },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                    businessProfile: { include: { documents: true } },
+                    customerProfile: true,
+                },
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+};
+
+const getProfileUpdateRequestById = async (requestId) => {
+    const request = await prisma.profileUpdateRequest.findUnique({
+        where: { id: requestId },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                    businessProfile: { include: { documents: true } },
+                    customerProfile: true,
+                },
+            },
+        },
+    });
+    if (!request) throw new ApiError(httpStatus.NOT_FOUND, 'Request not found');
+    return request;
+};
+
+const approveProfileUpdateRequest = async (requestId) => {
+    const request = await prisma.profileUpdateRequest.findUnique({ where: { id: requestId }, include: { user: true } });
+
+    if (!request) throw new ApiError(httpStatus.NOT_FOUND, 'Request not found');
+    if (request.status !== 'PENDING') throw new ApiError(httpStatus.BAD_REQUEST, 'Request already reviewed');
+
+    const isBusiness = request.user.role === 'BUSINESS';
+
+    return prisma.$transaction(async (tx) => {
+        if (isBusiness) {
+            await tx.businessProfile.update({
+                where: { userId: request.userId },
+                data: request.proposedData,
+            });
+
+            if (request.documentIdsToRemove?.length) {
+                await tx.businessDocument.deleteMany({
+                    where: { id: { in: request.documentIdsToRemove } },
+                });
+            }
+
+            if (request.documentsToAdd?.length) {
+                const businessProfile = await tx.businessProfile.findUnique({ where: { userId: request.userId } });
+                await tx.businessDocument.createMany({
+                    data: request.documentsToAdd.map((doc) => ({
+                        businessProfileId: businessProfile.id,
+                        fileUrl: doc.url,
+                        publicId: doc.publicId,
+                        fileType: doc.fileType,
+                    })),
+                });
+            }
+        } else {
+            await tx.customerProfile.update({
+                where: { userId: request.userId },
+                data: request.proposedData,
+            });
+        }
+
+        return tx.profileUpdateRequest.update({
+            where: { id: requestId },
+            data: { status: 'APPROVED', reviewedAt: new Date() },
+        });
+    });
+
+    await emailService.sendProfileUpdateApprovedEmail(request.user.email);
+    return updatedRequest;
+};
+
+const rejectProfileUpdateRequest = async (requestId, reason) => {
+    const request = await prisma.profileUpdateRequest.findUnique({ where: { id: requestId }, include: { user: true } });
+
+    if (!request) throw new ApiError(httpStatus.NOT_FOUND, 'Request not found');
+    if (request.status !== 'PENDING') throw new ApiError(httpStatus.BAD_REQUEST, 'Request already reviewed');
+
+    const updatedRequest = await prisma.profileUpdateRequest.update({
+        where: { id: requestId },
+        data: { status: 'REJECTED', rejectionReason: reason, reviewedAt: new Date() },
+    });
+
+    await emailService.sendProfileUpdateRejectedEmail(request.user?.email, reason);
+    return updatedRequest;
+};
+
+
 module.exports = {
     getPendingUsers,
     approveUser,
@@ -236,4 +340,8 @@ module.exports = {
     blockUser,
     unblockUser,
     fundAdminWallet,
+    getProfileUpdateRequests,
+    getProfileUpdateRequestById,
+    approveProfileUpdateRequest,
+    rejectProfileUpdateRequest,
 };

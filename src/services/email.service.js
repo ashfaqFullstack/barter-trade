@@ -319,6 +319,28 @@ const sendBarterOfferReceivedEmail = (to) =>
     );
 
 
+const sendProfileUpdateApprovedEmail = (to) =>
+    sendNotificationEmail(
+        to,
+        'Your Profile Updates Were Approved',
+        'Profile updates approved',
+        'Your profile update request has been approved and your changes are now active.',
+        'View My Profile',
+        '/profile',
+    );
+
+
+const sendProfileUpdateRejectedEmail = (to, reason) =>
+    sendNotificationEmail(
+        to,
+        'Your Profile Updates Were Rejected',
+        'Profile updates rejected',
+        `Your profile update request was rejected${reason ? ` for this reason: ${reason}` : '.'}`,
+        'View My Profile',
+        '/profile',
+    );
+
+
 const sendOtpEmail = async (to, otp) => {
     const subject = "Reset Your Password";
 
@@ -1432,4 +1454,6 @@ module.exports = {
     sendNewOrderReceivedEmail,
     sendBarterOfferSentEmail,
     sendBarterOfferReceivedEmail,
+    sendProfileUpdateApprovedEmail,
+    sendProfileUpdateRejectedEmail,
 };

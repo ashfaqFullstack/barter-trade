@@ -12,6 +12,9 @@ const barterRoute = require('./barter.route');
 const currencyRoute = require('./currency.route')
 const reportRoute = require('./report.route')
 const dashboardRoute = require('./dashboard.route');
+const profileUpdateRoute = require('./profileUpdate.route');
+const notificationRoute = require('./notification.route')
+
 const router = express.Router();
 
 const defaultRoutes = [
@@ -66,6 +69,14 @@ const defaultRoutes = [
     {
         path: '/dashboard',
         route: dashboardRoute,
+    },
+    {
+        path: '/profile-update-requests',
+        route: profileUpdateRoute
+    },
+    {
+        path: '/notifications',
+        route: notificationRoute
     },
 ];
 

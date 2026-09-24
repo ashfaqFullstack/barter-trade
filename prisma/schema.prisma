@@ -149,12 +149,15 @@ model User {
   pinResetTokens    PinResetToken[]
   currencyRateEdits CountryCurrencyRate[] @relation("RateUpdatedBy")
 
+
   companyFundingLogs CompanyFundingLog[]
 
   ordersAsBuyer  Order[] @relation("OrderBuyer")
   ordersAsSeller Order[] @relation("OrderSeller")
   barterOffersMade     BarterOffer[] @relation("BarterOfferer")
   barterOffersReceived BarterOffer[] @relation("BarterTargetOwner")
+  profileUpdateRequests ProfileUpdateRequest[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -419,3 +422,38 @@ model BarterOffer {
   @@map("barter_offers")
 }
 
+enum ProfileUpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ProfileUpdateRequest {
+  id                    String              @id @default(uuid())
+  userId                String
+  status                ProfileUpdateStatus @default(PENDING)
+  proposedData          Json
+  documentsToAdd        Json                @default("[]")
+  documentIdsToRemove   String[]            @default([])
+  rejectionReason       String?
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profile_update_requests")
+}
+
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  keys      Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}

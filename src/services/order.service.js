@@ -6,6 +6,7 @@ const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const emailService = require('./email.service');
 const currencyService = require('./currency.service');
+const { notificationService } = require('.');
 
 const createOrder = async (buyerId, listingId, pin) => {
     const listing = await prisma.listing.findUnique({
@@ -81,6 +82,13 @@ const createOrder = async (buyerId, listingId, pin) => {
         emailService.sendOrderPlacedEmail(buyer.email),
         emailService.sendNewOrderReceivedEmail(seller.email),
     ]);
+
+
+    await notificationService.sendPushToUser(listing.businessId, {
+        title: 'New Order Received',
+        body: `New order for "${listing.title}" — $${amount}`,
+        url: '/dashboard/orders/received',
+    });
 
     return order;
 };

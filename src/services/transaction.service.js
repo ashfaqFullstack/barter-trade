@@ -5,6 +5,7 @@ const ApiError = require('../utils/ApiError');
 const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const currencyService = require('./currency.service');
+const { notificationService } = require('.');
 
 const sendTransaction = async (senderId, receiverId, amount, pin) => {
     if (senderId === receiverId) {
@@ -84,6 +85,12 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
                 { userId: senderId, amount: commissionBuyer, type: 'TRADE_COMMISSION' },
                 { userId: receiverId, amount: commissionSeller, type: 'TRADE_COMMISSION' },
             ],
+        });
+
+        await notificationService.sendPushToUser(receiverId, {
+            title: 'Trade Dollars Received',
+            body: `You received $${transaction.netAmountToSeller} trade dollars.`,
+            url: '/dashboard/wallet/history',
         });
 
         return transaction;

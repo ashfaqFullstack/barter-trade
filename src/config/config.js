@@ -30,6 +30,9 @@ const envVarsSchema = Joi.object()
         PIN_LOCK_MINUTES: Joi.number().default(15),
         TRADE_COMMISSION_PERCENT: Joi.number().default(5),
         COMPANY_ACCOUNT_ID: Joi.string().default('company-account-main'),
+        VAPID_PUBLIC_KEY: Joi.string().required(),
+        VAPID_PRIVATE_KEY: Joi.string().required(),
+        VAPID_SUBJECT: Joi.string().required(),
     })
     .unknown();
 
@@ -82,4 +85,9 @@ module.exports = {
         commissionPercent: envVars.TRADE_COMMISSION_PERCENT,
     },
     companyAccountId: envVars.COMPANY_ACCOUNT_ID,
+    vapid: {
+        publicKey: envVars.VAPID_PUBLIC_KEY,
+        privateKey: envVars.VAPID_PRIVATE_KEY,
+        subject: envVars.VAPID_SUBJECT,
+    },
 };

@@ -1,7 +1,10 @@
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
+const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const emailService = require('./email.service');
+const companyAccountService = require('./companyAccount.service');
+const { notificationService } = require('.');
 
 const createOffer = async (offererId, offererListingId, targetListingId) => {
     const [offererListing, targetListing] = await Promise.all([
@@ -40,6 +43,12 @@ const createOffer = async (offererId, offererListingId, targetListingId) => {
         emailService.sendBarterOfferReceivedEmail(targetOwner.email),
     ]);
 
+    await notificationService.sendPushToUser(targetListing.businessId, {
+        title: 'New Barter Offer',
+        body: `Someone wants to swap for "${targetListing.title}".`,
+        url: '/dashboard/barter-offers/received',
+    });
+
     return offer;
 };
 
@@ -51,6 +60,48 @@ const acceptOffer = async (targetOwnerId, offerId) => {
     if (offer.status !== 'PENDING') throw new ApiError(httpStatus.BAD_REQUEST, 'Offer is no longer pending');
 
     return prisma.$transaction(async (tx) => {
+        const [offererListing, targetListing, wallets] = await Promise.all([
+            tx.listing.findUnique({ where: { id: offer.offererListingId } }),
+            tx.listing.findUnique({ where: { id: offer.targetListingId } }),
+            tx.wallet.findMany({ where: { userId: { in: [offer.offererId, offer.targetOwnerId] } } }),
+        ]);
+
+        if (!offererListing || !targetListing) {
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Barter listings are no longer available');
+        }
+
+        const commissionPercent = config.trade.commissionPercent;
+        const commissionBuyer = (Number(offererListing.price) * commissionPercent) / 100;
+        const commissionSeller = (Number(targetListing.price) * commissionPercent) / 100;
+        const offererWallet = wallets.find((wallet) => wallet.userId === offer.offererId);
+        const targetOwnerWallet = wallets.find((wallet) => wallet.userId === offer.targetOwnerId);
+
+        if (!offererWallet || !targetOwnerWallet) {
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Both users must have a wallet to accept a barter offer');
+        }
+        if (Number(offererWallet.balance) - commissionBuyer < -Number(offererWallet.creditLimit)
+            || Number(targetOwnerWallet.balance) - commissionSeller < -Number(targetOwnerWallet.creditLimit)) {
+            throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient balance / credit limit for barter commission');
+        }
+
+        await Promise.all([
+            tx.wallet.update({
+                where: { userId: offer.offererId },
+                data: { balance: { decrement: commissionBuyer } },
+            }),
+            tx.wallet.update({
+                where: { userId: offer.targetOwnerId },
+                data: { balance: { decrement: commissionSeller } },
+            }),
+        ]);
+        await companyAccountService.creditCompanyAccount(tx, commissionBuyer + commissionSeller);
+        await tx.monthlyFeeLog.createMany({
+            data: [
+                { userId: offer.offererId, amount: commissionBuyer, type: 'TRADE_COMMISSION' },
+                { userId: offer.targetOwnerId, amount: commissionSeller, type: 'TRADE_COMMISSION' },
+            ],
+        });
+
         await tx.listing.update({ where: { id: offer.offererListingId }, data: { status: 'TRADED' } });
         await tx.listing.update({ where: { id: offer.targetListingId }, data: { status: 'TRADED' } });
 

@@ -16,3 +16,5 @@ module.exports.barterService = require('./barter.service')
 module.exports.currencyService = require('./currency.service')
 module.exports.reportService = require('./report.service')
 module.exports.dashboardService = require('./dashboard.service');
+module.exports.updateProfileService = require('./profileUpdate.service')
+module.exports.notificationService = require('./notification.service')

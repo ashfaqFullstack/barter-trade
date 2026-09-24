@@ -45,6 +45,26 @@ const fundWallet = catchAsync(async (req, res) => {
     res.send(wallet);
 });
 
+const getProfileUpdateRequests = catchAsync(async (req, res) => {
+    const requests = await adminService.getProfileUpdateRequests(req.query.status);
+    res.send(requests);
+});
+
+const getProfileUpdateRequestDetail = catchAsync(async (req, res) => {
+    const request = await adminService.getProfileUpdateRequestById(req.params.requestId);
+    res.send(request);
+});
+
+const approveProfileUpdateRequest = catchAsync(async (req, res) => {
+    const request = await adminService.approveProfileUpdateRequest(req.params.requestId);
+    res.send(request);
+});
+
+const rejectProfileUpdateRequest = catchAsync(async (req, res) => {
+    const request = await adminService.rejectProfileUpdateRequest(req.params.requestId, req.body.reason);
+    res.send(request);
+});
+
 module.exports = {
     getPendingUsers,
     approveUser,
@@ -54,4 +74,8 @@ module.exports = {
     blockUser,
     unblockUser,
     fundWallet,
+    getProfileUpdateRequests,
+    getProfileUpdateRequestDetail,
+    approveProfileUpdateRequest,
+    rejectProfileUpdateRequest,
 };
