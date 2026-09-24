@@ -4,7 +4,6 @@ const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const emailService = require('./email.service');
 const companyAccountService = require('./companyAccount.service');
-const { notificationService } = require('./notification.service');
 
 const createOffer = async (offererId, offererListingId, targetListingId) => {
     const [offererListing, targetListing] = await Promise.all([
@@ -42,12 +41,6 @@ const createOffer = async (offererId, offererListingId, targetListingId) => {
         emailService.sendBarterOfferSentEmail(offerer.email),
         emailService.sendBarterOfferReceivedEmail(targetOwner.email),
     ]);
-
-    await notificationService.sendPushToUser(targetListing.businessId, {
-        title: 'New Barter Offer',
-        body: `Someone wants to swap for "${targetListing.title}".`,
-        url: '/dashboard/barter-offers/received',
-    });
 
     return offer;
 };
