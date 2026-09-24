@@ -5,7 +5,7 @@ const ApiError = require('../utils/ApiError');
 const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const currencyService = require('./currency.service');
-const { notificationService } = require('./notification.service');
+const notificationService = require('./notification.service');
 
 const sendTransaction = async (senderId, receiverId, amount, pin) => {
     if (senderId === receiverId) {
