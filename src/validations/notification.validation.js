@@ -17,4 +17,10 @@ const unsubscribe = {
     }),
 };
 
-module.exports = { subscribe, unsubscribe };
+const status = {
+    query: Joi.object().keys({
+        endpoint: Joi.string().required(),
+    }),
+};
+
+module.exports = { subscribe, unsubscribe, status };

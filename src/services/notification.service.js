@@ -17,9 +17,9 @@ const removeSubscription = async (endpoint) => {
     await prisma.pushSubscription.deleteMany({ where: { endpoint } });
 };
 
-const hasSubscription = async (userId) => {
+const hasSubscription = async (userId, endpoint) => {
     const subscription = await prisma.pushSubscription.findFirst({
-        where: { userId },
+        where: { userId, endpoint },
         select: { endpoint: true },
     });
 
