@@ -139,7 +139,10 @@ const getAllUsers = async (filters) => {
     const { role, status, search, page = 1, limit = 10 } = filters;
 
     const where = {
-        ...(role && { role }),
+        AND: [
+            { role: { not: 'ADMIN' } },
+            ...(role ? [{ role }] : []),
+        ],
         ...(status && { status }),
         ...(search && {
             OR: [
