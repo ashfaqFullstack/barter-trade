@@ -275,6 +275,17 @@ const sendListingAddedEmail = (to, listingTitle) =>
     );
 
 
+const sendRegistrationUnderReviewEmail = (to) =>
+    sendNotificationEmail(
+        to,
+        'Your Account Is Under Review',
+        'Your details have been submitted',
+        'Your registration details have been submitted successfully. Your account is currently under review. We will notify you once the review is complete.',
+        'Go to Login',
+        '/login',
+    );
+
+
 const sendOrderPlacedEmail = (to) =>
     sendNotificationEmail(
         to,
@@ -1449,6 +1460,7 @@ module.exports = {
     sendApprovalEmail,
     sendRejectionEmail,
     sendPinResetOtpEmail,
+    sendRegistrationUnderReviewEmail,
     sendListingAddedEmail,
     sendOrderPlacedEmail,
     sendNewOrderReceivedEmail,

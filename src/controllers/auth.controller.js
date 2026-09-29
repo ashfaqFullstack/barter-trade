@@ -3,9 +3,18 @@ const catchAsync = require('../utils/catchAsync');
 const httpStatus = require('http-status').default;
 const { tokenService } = require('../services');
 const { setAuthCookies, clearAuthCookies } = require('../utils/cookies');
+const emailService = require('../services/email.service');
+const logger = require('../config/logger');
 
 const register = catchAsync(async (req, res) => {
     const user = await userService.createUser(req.body);
+    if (user.role === 'CUSTOMER' || user.role === 'BUSINESS') {
+        try {
+            await emailService.sendRegistrationUnderReviewEmail(user.email);
+        } catch (error) {
+            logger.error(`Registration review email failed: ${error.message}`);
+        }
+    }
     const tokens = await tokenService.generateAuthTokens(user)
     setAuthCookies(res, tokens);
     res.status(httpStatus.CREATED).send({ user })

@@ -91,16 +91,23 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
         return transaction;
     });
 
-    // Push delivery is external work and must not keep the database transaction open.
-    try {
-        await notificationService.sendPushToUser(receiverId, {
+    const notificationResults = await Promise.allSettled([
+        notificationService.sendPushToUser(receiverId, {
             title: 'Trade Dollars Received',
             body: `You received $${transaction.netAmountToSeller} trade dollars.`,
             url: '/dashboard/wallet/history',
-        });
-    } catch (error) {
-        // The transfer is already committed; a notification failure must not undo it.
-        logger.error(`Trade notification failed: ${error.message}`);
+        }),
+        notificationService.sendPushToUser(senderId, {
+            title: 'Trade Dollars Sent',
+            body: `You sent $${transaction.amount} trade dollars.`,
+            url: '/dashboard/wallet/history',
+        }),
+    ]);
+
+    for (const result of notificationResults) {
+        if (result.status === 'rejected') {
+            logger.error(`Trade notification failed: ${result.reason.message}`);
+        }
     }
 
     return transaction;
