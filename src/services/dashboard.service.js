@@ -1,6 +1,8 @@
+
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
+const currencyService = require('./currency.service');
 
 const VALID_PERIODS = [7, 30, 90];
 
@@ -50,17 +52,6 @@ const buildSalesChart = (orders, startDate, period, dateField) => {
     }));
 };
 
-const getCurrency = async (client, user) => {
-    if (!user.country) return 'USD';
-
-    const currencyRate = await client.countryCurrencyRate.findUnique({
-        where: { countryName: user.country },
-        select: { currencyCode: true },
-    });
-
-    return currencyRate?.currencyCode || 'USD';
-};
-
 const createDashboardService = (client = prisma) => ({
     async getSummary(user) {
         if (!['CUSTOMER', 'BUSINESS'].includes(user.role)) {
@@ -86,7 +77,14 @@ const createDashboardService = (client = prisma) => ({
 
         const summary = { totalOrders, totalBarterOffers, totalListings };
         if (user.role === 'BUSINESS') {
-            summary.totalSales = Number(sales._sum.amount || 0);
+            // Ledger is USD; show total sales in the business's own currency.
+            const viewerCurrency = await currencyService.getUserCurrency(user.id, client);
+            summary.totalSales = currencyService.convertWithRate(
+                Number(sales._sum.amount || 0),
+                viewerCurrency.rate,
+                viewerCurrency.currencyCode,
+            );
+            summary.currency = viewerCurrency.currencyCode;
         }
 
         return summary;
@@ -115,7 +113,7 @@ const createDashboardService = (client = prisma) => ({
                 createdAt: { gte: startDate },
             };
 
-        const [orders, currency] = await Promise.all([
+        const [orders, viewerCurrency] = await Promise.all([
             client.order.findMany({
                 where,
                 select: {
@@ -123,14 +121,20 @@ const createDashboardService = (client = prisma) => ({
                     [dateField]: true,
                 },
             }),
-            getCurrency(client, user),
+            currencyService.getUserCurrency(user.id, client),
         ]);
+
+        // Convert each USD order amount into the viewer's currency before bucketing per day.
+        const converted = orders.map((order) => ({
+            ...order,
+            amount: Number(order.amount) * viewerCurrency.rate,
+        }));
 
         return {
             period: normalizedPeriod,
-            currency,
+            currency: viewerCurrency.currencyCode,
             data: buildSalesChart(
-                orders,
+                converted,
                 startDate,
                 normalizedPeriod,
                 dateField

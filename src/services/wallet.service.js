@@ -1,9 +1,11 @@
+
 const bcrypt = require('bcrypt');
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const emailService = require('./email.service');
+const currencyService = require('./currency.service');
 
 const getMyWallet = async (userId) => {
     const [wallet, user] = await Promise.all([
@@ -15,7 +17,20 @@ const getMyWallet = async (userId) => {
         throw new ApiError(httpStatus.NOT_FOUND, 'Wallet not found — your account may not be approved yet');
     }
 
-    return { ...wallet, hasPin: !!user.transactionPin };
+    // balance / creditLimit stay in USD (the ledger); `display` is in the user's own currency.
+    const viewerCurrency = await currencyService.getUserCurrency(userId);
+    const withDisplay = currencyService.attachDisplay(wallet, ['balance', 'creditLimit'], viewerCurrency);
+    const availableBalance = currencyService.convertWithRate(
+        Number(wallet.balance) + Number(wallet.creditLimit),
+        viewerCurrency.rate,
+        viewerCurrency.currencyCode,
+    );
+
+    return {
+        ...withDisplay,
+        display: { ...withDisplay.display, availableBalance },
+        hasPin: !!user.transactionPin,
+    };
 };
 
 const setPin = async (userId, pin) => {

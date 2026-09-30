@@ -1,3 +1,4 @@
+
 const prisma = require('../config/prisma');
 const companyAccountService = require('./companyAccount.service');
 
@@ -49,6 +50,7 @@ const getDashboardStats = async () => {
     ]);
 
     return {
+        currency: 'USD', // platform-wide figures are always USD
         totalUsers,
         pendingUsers,
         totalTransactions,

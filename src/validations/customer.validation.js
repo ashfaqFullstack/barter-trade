@@ -7,7 +7,6 @@ const completeProfile = {
         city: Joi.string(),
         profilePicture: Joi.string(),
         country: Joi.string(),
-        membershipTier: Joi.string().valid('STANDARD', 'GOLD', 'PLATINUM'),
     }),
 };
 

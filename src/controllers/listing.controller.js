@@ -1,3 +1,4 @@
+
 const httpStatus = require('http-status').default;
 const catchAsync = require('../utils/catchAsync');
 const listingService = require('../services/listing.service');
@@ -27,12 +28,12 @@ const deleteListing = catchAsync(async (req, res) => {
 });
 
 const getListings = catchAsync(async (req, res) => {
-    const result = await listingService.getListings(req.query);
+    const result = await listingService.getListings(req.query, req.user?.id);
     res.send(result);
 });
 
 const getListing = catchAsync(async (req, res) => {
-    const listing = await listingService.getListingById(req.params.listingId);
+    const listing = await listingService.getListingById(req.params.listingId, req.user?.id);
     res.send(listing);
 });
 

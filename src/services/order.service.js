@@ -1,3 +1,4 @@
+
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const config = require('../config/config');
@@ -6,6 +7,9 @@ const walletService = require('./wallet.service');
 const companyAccountService = require('./companyAccount.service');
 const emailService = require('./email.service');
 const currencyService = require('./currency.service');
+const { roundUsd } = require('../utils/money');
+
+const ORDER_DISPLAY_FIELDS = ['amount', 'commissionBuyer', 'commissionSeller', 'netAmountToSeller'];
 
 const createOrder = async (buyerId, listingId, pin) => {
     const listing = await prisma.listing.findUnique({
@@ -27,17 +31,15 @@ const createOrder = async (buyerId, listingId, pin) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Your wallet is not set up yet');
     }
 
-    const [buyerCurrency, sellerCurrency] = await Promise.all([
-        currencyService.getUserCurrency(buyerId),
-        currencyService.getUserCurrency(listing.businessId),
-    ]);
+    const buyerCurrency = await currencyService.getUserCurrency(buyerId);
+
+    // Listing price is already USD — the buyer just sees it converted, the ledger uses USD.
     const amount = Number(listing.price);
-    const buyerAmount = currencyService.convertAmount(amount, sellerCurrency.rate, buyerCurrency.rate);
     const commissionPercent = config.trade.commissionPercent;
-    const commissionBuyer = (buyerAmount * commissionPercent) / 100;
-    const commissionSeller = (amount * commissionPercent) / 100;
-    const netAmountToSeller = amount - commissionSeller;
-    const totalDebit = buyerAmount + commissionBuyer;
+    const commissionBuyer = roundUsd((amount * commissionPercent) / 100);
+    const commissionSeller = roundUsd((amount * commissionPercent) / 100);
+    const netAmountToSeller = roundUsd(amount - commissionSeller);
+    const totalDebit = roundUsd(amount + commissionBuyer);
 
     const projectedBalance = Number(buyerWallet.balance) - totalDebit;
     if (projectedBalance < -Number(buyerWallet.creditLimit)) {
@@ -60,11 +62,8 @@ const createOrder = async (buyerId, listingId, pin) => {
                 buyerId,
                 sellerId: listing.businessId,
                 amount,
-                buyerAmount,
                 buyerCurrency: buyerCurrency.currencyCode,
-                sellerCurrency: sellerCurrency.currencyCode,
                 buyerRate: buyerCurrency.rate,
-                sellerRate: sellerCurrency.rate,
                 commissionBuyer,
                 commissionSeller,
                 netAmountToSeller,
@@ -82,7 +81,7 @@ const createOrder = async (buyerId, listingId, pin) => {
         emailService.sendNewOrderReceivedEmail(seller.email),
     ]);
 
-    return order;
+    return currencyService.attachDisplay(order, ORDER_DISPLAY_FIELDS, buyerCurrency);
 };
 
 const completeOrder = async (buyerId, orderId) => {
@@ -92,35 +91,25 @@ const completeOrder = async (buyerId, orderId) => {
     if (order.buyerId !== buyerId) throw new ApiError(httpStatus.FORBIDDEN, 'You do not own this order');
     if (order.status !== 'ESCROW_HELD') throw new ApiError(httpStatus.BAD_REQUEST, 'Order is not in escrow');
 
-    return prisma.$transaction(async (tx) => {
+    const completed = await prisma.$transaction(async (tx) => {
         await tx.wallet.update({
             where: { userId: order.sellerId },
             data: { balance: { increment: order.netAmountToSeller } },
         });
 
-        const sellerCurrency = order.sellerRate
-            ? { rate: order.sellerRate }
-            : await currencyService.getUserCurrency(order.sellerId, tx);
-        const buyerCurrency = order.buyerRate
-            ? { rate: order.buyerRate }
-            : await currencyService.getUserCurrency(order.buyerId, tx);
-        const companyCommission = Number(order.commissionBuyer) + currencyService.convertAmount(
-            order.commissionSeller,
-            sellerCurrency.rate,
-            buyerCurrency.rate,
+        // Company ledger is always USD.
+        await companyAccountService.creditCompanyAccount(
+            tx,
+            roundUsd(Number(order.commissionBuyer) + Number(order.commissionSeller)),
         );
-        await companyAccountService.creditCompanyAccount(tx, companyCommission);
 
         const transaction = await tx.transaction.create({
             data: {
                 senderId: order.buyerId,
                 receiverId: order.sellerId,
-                amount: order.buyerAmount ?? order.amount,
-                convertedAmount: order.amount,
-                senderCurrency: order.buyerCurrency,
-                receiverCurrency: order.sellerCurrency,
-                senderRate: order.buyerRate,
-                receiverRate: order.sellerRate,
+                amount: order.amount,
+                inputCurrency: order.buyerCurrency,
+                exchangeRate: order.buyerRate,
                 commissionBuyer: order.commissionBuyer,
                 commissionSeller: order.commissionSeller,
                 netAmountToSeller: order.netAmountToSeller,
@@ -142,6 +131,9 @@ const completeOrder = async (buyerId, orderId) => {
             data: { status: 'COMPLETED', completedAt: new Date(), receiptId: transaction.receiptId },
         });
     });
+
+    const viewerCurrency = await currencyService.getUserCurrency(buyerId);
+    return currencyService.attachDisplay(completed, ORDER_DISPLAY_FIELDS, viewerCurrency);
 };
 
 const cancelOrder = async (userId, orderId) => {
@@ -153,7 +145,7 @@ const cancelOrder = async (userId, orderId) => {
     }
     if (order.status !== 'ESCROW_HELD') throw new ApiError(httpStatus.BAD_REQUEST, 'Order cannot be cancelled');
 
-    const refundAmount = Number(order.buyerAmount ?? order.amount) + Number(order.commissionBuyer);
+    const refundAmount = roundUsd(Number(order.amount) + Number(order.commissionBuyer));
 
     return prisma.$transaction(async (tx) => {
         await tx.wallet.update({
@@ -167,6 +159,9 @@ const cancelOrder = async (userId, orderId) => {
             where: { id: orderId },
             data: { status: 'CANCELLED', cancelledAt: new Date() },
         });
+    }).then(async (cancelled) => {
+        const viewerCurrency = await currencyService.getUserCurrency(userId);
+        return currencyService.attachDisplay(cancelled, ORDER_DISPLAY_FIELDS, viewerCurrency);
     });
 };
 const profileSelect = {
@@ -174,25 +169,36 @@ const profileSelect = {
         id: true,
         name: true,
         role: true,
-        businessProfile: { select: { businessName: true, city: true, address: true } },
+        businessProfile: { select: { businessName: true, streetNumber: true, streetName: true, city: true, state: true, postcode: true } },
         customerProfile: { select: { city: true, address: true } },
     },
 };
 
+// Every order/listing amount is shown in the VIEWER's own currency (buyer or seller).
+const withViewerDisplay = async (userId, orders) => {
+    const viewerCurrency = await currencyService.getUserCurrency(userId);
+    return orders.map((order) => ({
+        ...currencyService.attachDisplay(order, ORDER_DISPLAY_FIELDS, viewerCurrency),
+        listing: order.listing ? currencyService.attachDisplay(order.listing, ['price'], viewerCurrency) : order.listing,
+    }));
+};
+
 const getMyOrders = async (buyerId) => {
-    return prisma.order.findMany({
+    const orders = await prisma.order.findMany({
         where: { buyerId },
         include: { listing: true, seller: profileSelect },
         orderBy: { createdAt: 'desc' },
     });
+    return withViewerDisplay(buyerId, orders);
 };
 
 const getReceivedOrders = async (sellerId) => {
-    return prisma.order.findMany({
+    const orders = await prisma.order.findMany({
         where: { sellerId },
         include: { listing: true, buyer: profileSelect },
         orderBy: { createdAt: 'desc' },
     });
+    return withViewerDisplay(sellerId, orders);
 };
 
 module.exports = { createOrder, completeOrder, cancelOrder, getMyOrders, getReceivedOrders };

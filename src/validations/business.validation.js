@@ -1,25 +1,37 @@
+
 const Joi = require('joi');
+
+const digitsAndSpaces = Joi.string().pattern(/^[0-9 ]*$/).allow('').messages({
+    'string.pattern.base': 'Only digits and spaces are allowed',
+});
 
 const saveStep = {
     body: Joi.object().keys({
         // Step 1: Business Details
         businessName: Joi.string(),
-        tradingName: Joi.string().allow(''),
-        businessRegistrationNumber: Joi.string().allow(''),
-        category: Joi.string(),
-        website: Joi.string().uri().allow(''),
-        country: Joi.string(),
-        address: Joi.string(),
+        acn: digitsAndSpaces,
+        abn: digitsAndSpaces,
+        streetNumber: Joi.string(),
+        streetName: Joi.string(),
         city: Joi.string(),
-
-        // Step 2: Contact Details
+        state: Joi.string(),
+        postcode: Joi.string(),
+        country: Joi.string(),
         phone: Joi.string(),
-        secondaryContactName: Joi.string().allow(''),
-        secondaryContactPhone: Joi.string().allow(''),
-        secondaryContactEmail: Joi.string().email().allow(''),
+        mobile: Joi.string(),
+        website: Joi.string().uri().allow(''),
+        socialLinks: Joi.string().max(1000).allow(''),
+
+        // Step 2: Business Information + Verification
+        category: Joi.string(),
+        productsServices: Joi.string().max(2000),
+        yearsInBusiness: Joi.number().integer().min(0).max(200),
 
         // Step 3: Membership
         membershipTier: Joi.string().valid('STANDARD', 'GOLD', 'PLATINUM'),
+
+        // Step 5: Declaration (must be ticked)
+        declarationAccepted: Joi.boolean().valid(true),
     }),
 };
 
@@ -30,7 +42,7 @@ const saveDocuments = {
                 Joi.object().keys({
                     url: Joi.string().required(),
                     publicId: Joi.string().required(),
-                    fileType: Joi.string().valid('PHOTO_ID', 'PROOF_OF_ADDRESS').required(),
+                    fileType: Joi.string().valid('PHOTO_ID', 'PROOF_OF_ADDRESS', 'BUSINESS_LICENCE').required(),
                 })
             )
             .min(1)

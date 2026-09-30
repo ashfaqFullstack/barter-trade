@@ -28,4 +28,14 @@ const auth = (...requiredRights) => async (req, res, next) => {
         .catch((err) => next(err));
 };
 
+// For public routes that behave differently when the viewer happens to be logged in
+// (e.g. the marketplace shows prices in the viewer's currency). Never rejects.
+const optionalAuth = (req, res, next) => {
+    passport.authenticate('jwt', { session: false }, (err, user) => {
+        if (!err && user) req.user = user;
+        next();
+    })(req, res, next);
+};
+
 module.exports = auth;
+module.exports.optional = optionalAuth;

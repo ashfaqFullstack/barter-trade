@@ -1,3 +1,4 @@
+
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const config = require('../config/config');
@@ -7,20 +8,24 @@ const companyAccountService = require('./companyAccount.service');
 const currencyService = require('./currency.service');
 const notificationService = require('./notification.service');
 const logger = require('../config/logger');
+const { roundUsd, formatMoney } = require('../utils/money');
 
+const TX_DISPLAY_FIELDS = ['amount', 'commissionBuyer', 'commissionSeller', 'netAmountToSeller'];
+
+// `amount` is what the SENDER typed, in the sender's own currency.
+// Everything is converted to USD once (live rate) and the ledger only ever sees USD.
 const sendTransaction = async (senderId, receiverId, amount, pin) => {
     if (senderId === receiverId) {
-        throw new ApiError(httpStatus.BAD_REQUEST, 'You cannot send trade dollars to yourself');
+        throw new ApiError(httpStatus.BAD_REQUEST, 'You cannot send money to yourself');
     }
 
     // 1. Verify PIN first — before touching any balance.
     await walletService.verifyPin(senderId, pin);
 
-    const [senderWallet, receiverWallet, senderCurrency, receiverCurrency] = await Promise.all([
+    const [senderWallet, receiverWallet, senderCurrency] = await Promise.all([
         prisma.wallet.findUnique({ where: { userId: senderId } }),
         prisma.wallet.findUnique({ where: { userId: receiverId } }),
         currencyService.getUserCurrency(senderId),
-        currencyService.getUserCurrency(receiverId),
     ]);
 
     if (!senderWallet) {
@@ -30,12 +35,17 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
         throw new ApiError(httpStatus.NOT_FOUND, 'Receiver wallet not found');
     }
 
-    const convertedAmount = currencyService.convertAmount(amount, senderCurrency.rate, receiverCurrency.rate);
+    // Sender's typed amount (e.g. 280 PKR) -> USD base, using the live rate right now.
+    const usdAmount = roundUsd(Number(amount) / senderCurrency.rate);
+    if (usdAmount <= 0) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Amount is too small');
+    }
+
     const commissionPercent = config.trade.commissionPercent;
-    const commissionBuyer = (Number(amount) * commissionPercent) / 100;
-    const commissionSeller = (convertedAmount * commissionPercent) / 100;
-    const netAmountToSeller = convertedAmount - commissionSeller;
-    const totalDebit = Number(amount) + commissionBuyer;
+    const commissionBuyer = roundUsd((usdAmount * commissionPercent) / 100);
+    const commissionSeller = roundUsd((usdAmount * commissionPercent) / 100);
+    const netAmountToSeller = roundUsd(usdAmount - commissionSeller);
+    const totalDebit = roundUsd(usdAmount + commissionBuyer);
 
     const projectedBalance = Number(senderWallet.balance) - totalDebit;
     const creditLimit = Number(senderWallet.creditLimit);
@@ -55,24 +65,17 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
             data: { balance: { increment: netAmountToSeller } },
         });
 
-        // Keep the single company ledger in the sender's currency.
-        const companyCommission = commissionBuyer + currencyService.convertAmount(
-            commissionSeller,
-            receiverCurrency.rate,
-            senderCurrency.rate,
-        );
-        await companyAccountService.creditCompanyAccount(tx, companyCommission);
+        // Company ledger is always USD.
+        await companyAccountService.creditCompanyAccount(tx, roundUsd(commissionBuyer + commissionSeller));
 
-        const transaction = await tx.transaction.create({
+        const created = await tx.transaction.create({
             data: {
                 senderId,
                 receiverId,
-                amount,
-                convertedAmount,
-                senderCurrency: senderCurrency.currencyCode,
-                receiverCurrency: receiverCurrency.currencyCode,
-                senderRate: senderCurrency.rate,
-                receiverRate: receiverCurrency.rate,
+                amount: usdAmount,
+                inputAmount: amount,
+                inputCurrency: senderCurrency.currencyCode,
+                exchangeRate: senderCurrency.rate,
                 commissionBuyer,
                 commissionSeller,
                 netAmountToSeller,
@@ -88,18 +91,26 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
             ],
         });
 
-        return transaction;
+        return created;
     });
+
+    // Notifications show each person's amount in THEIR OWN currency.
+    const receiverCurrency = await currencyService.getUserCurrency(receiverId);
+    const receivedText = formatMoney(
+        currencyService.convertWithRate(transaction.netAmountToSeller, receiverCurrency.rate, receiverCurrency.currencyCode),
+        receiverCurrency.currencyCode,
+    );
+    const sentText = formatMoney(amount, senderCurrency.currencyCode);
 
     const notificationResults = await Promise.allSettled([
         notificationService.sendPushToUser(receiverId, {
-            title: 'Trade Dollars Received',
-            body: `You received $${transaction.netAmountToSeller} trade dollars.`,
+            title: 'Payment Received',
+            body: `You received ${receivedText}.`,
             url: '/dashboard/wallet/history',
         }),
         notificationService.sendPushToUser(senderId, {
-            title: 'Trade Dollars Sent',
-            body: `You sent $${transaction.amount} trade dollars.`,
+            title: 'Payment Sent',
+            body: `You sent ${sentText}.`,
             url: '/dashboard/wallet/history',
         }),
     ]);
@@ -110,7 +121,7 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
         }
     }
 
-    return transaction;
+    return currencyService.attachDisplay(transaction, TX_DISPLAY_FIELDS, senderCurrency);
 };
 
 const getReceipt = async (userId, receiptId) => {
@@ -129,11 +140,13 @@ const getReceipt = async (userId, receiptId) => {
         throw new ApiError(httpStatus.FORBIDDEN, 'You do not have access to this receipt');
     }
 
-    return transaction;
+    const viewerCurrency = await currencyService.getUserCurrency(userId);
+    return currencyService.attachDisplay(transaction, TX_DISPLAY_FIELDS, viewerCurrency);
 };
 
 const getMyTransactions = async (userId, { page = 1, limit = 10 }) => {
     const where = { OR: [{ senderId: userId }, { receiverId: userId }] };
+    const viewerCurrency = await currencyService.getUserCurrency(userId);
 
     const [results, total] = await Promise.all([
         prisma.transaction.findMany({
@@ -150,7 +163,7 @@ const getMyTransactions = async (userId, { page = 1, limit = 10 }) => {
     ]);
 
     return {
-        results,
+        results: results.map((t) => currencyService.attachDisplay(t, TX_DISPLAY_FIELDS, viewerCurrency)),
         page: Number(page),
         limit: Number(limit),
         totalResults: total,

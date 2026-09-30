@@ -1,20 +1,29 @@
+
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 const emailService = require('./email.service');
+const currencyService = require('./currency.service');
 
+
+// Price arrives in the SELLER's own currency and is stored as USD.
+// Any listing returned to a viewer gets a `display` block in the viewer's currency.
+const withDisplay = (listing, viewerCurrency) =>
+    currencyService.attachDisplay(listing, ['price'], viewerCurrency);
 
 const createListing = async (userId, data) => {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, email: true } });
 
     const isPublic = data.isPublic !== undefined ? data.isPublic : user.role === 'BUSINESS';
+    const sellerCurrency = await currencyService.getUserCurrency(userId);
+    const priceUsd = await currencyService.toUsd(data.price, sellerCurrency.currencyCode);
 
     const listing = await prisma.listing.create({
-        data: { businessId: userId, ...data, isPublic },
+        data: { businessId: userId, ...data, price: priceUsd, isPublic },
     });
 
     await emailService.sendListingAddedEmail(user.email, listing.title);
-    return listing;
+    return withDisplay(listing, sellerCurrency);
 };
 
 
@@ -28,7 +37,14 @@ const updateListing = async (businessId, listingId, data) => {
         throw new ApiError(httpStatus.FORBIDDEN, 'You do not own this listing');
     }
 
-    return prisma.listing.update({ where: { id: listingId }, data });
+    const sellerCurrency = await currencyService.getUserCurrency(businessId);
+    const updateData = { ...data };
+    if (data.price !== undefined) {
+        updateData.price = await currencyService.toUsd(data.price, sellerCurrency.currencyCode);
+    }
+
+    const updated = await prisma.listing.update({ where: { id: listingId }, data: updateData });
+    return withDisplay(updated, sellerCurrency);
 };
 
 const deleteListing = async (businessId, listingId) => {
@@ -60,8 +76,14 @@ const deleteListing = async (businessId, listingId) => {
     await prisma.listing.delete({ where: { id: listingId } });
 };
 
-const getListings = async (filters) => {
-    const { category, country, minPrice, maxPrice, search, sort, page = 1, limit = 12 } = filters;
+const getListings = async (filters, viewerId) => {
+    const { category, country, search, sort, page = 1, limit = 12 } = filters;
+    let { minPrice, maxPrice } = filters;
+
+    // The viewer types min/max in THEIR currency; listings are stored in USD.
+    const viewerCurrency = await currencyService.getUserCurrency(viewerId);
+    if (minPrice != null) minPrice = await currencyService.toUsd(minPrice, viewerCurrency.currencyCode);
+    if (maxPrice != null) maxPrice = await currencyService.toUsd(maxPrice, viewerCurrency.currencyCode);
 
     const where = {
         status: 'ACTIVE',
@@ -108,7 +130,8 @@ const getListings = async (filters) => {
     ]);
 
     return {
-        results,
+        results: results.map((listing) => withDisplay(listing, viewerCurrency)),
+        currency: viewerCurrency.currencyCode,
         page: Number(page),
         limit: Number(limit),
         totalResults: total,
@@ -116,7 +139,7 @@ const getListings = async (filters) => {
     };
 };
 
-const getListingById = async (listingId) => {
+const getListingById = async (listingId, viewerId) => {
     const listing = await prisma.listing.findUnique({
         where: { id: listingId },
         include: {
@@ -133,14 +156,19 @@ const getListingById = async (listingId) => {
     if (!listing) {
         throw new ApiError(httpStatus.NOT_FOUND, 'Listing not found');
     }
-    return listing;
+    const viewerCurrency = await currencyService.getUserCurrency(viewerId);
+    return withDisplay(listing, viewerCurrency);
 };
 
 const getMyListings = async (businessId) => {
-    return prisma.listing.findMany({
-        where: { businessId, isDeleted: false },
-        orderBy: { createdAt: 'desc' },
-    });
+    const [listings, viewerCurrency] = await Promise.all([
+        prisma.listing.findMany({
+            where: { businessId, isDeleted: false },
+            orderBy: { createdAt: 'desc' },
+        }),
+        currencyService.getUserCurrency(businessId),
+    ]);
+    return listings.map((listing) => withDisplay(listing, viewerCurrency));
 };
 
 module.exports = { createListing, updateListing, deleteListing, getListings, getListingById, getMyListings };

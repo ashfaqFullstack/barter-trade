@@ -1,9 +1,12 @@
+
 const httpStatus = require('http-status').default;
 const prisma = require('../config/prisma');
 const config = require('../config/config');
 const ApiError = require('../utils/ApiError');
 const emailService = require('./email.service');
 const companyAccountService = require('./companyAccount.service');
+const currencyService = require('./currency.service');
+const { roundUsd } = require('../utils/money');
 
 const createOffer = async (offererId, offererListingId, targetListingId) => {
     const [offererListing, targetListing] = await Promise.all([
@@ -64,8 +67,8 @@ const acceptOffer = async (targetOwnerId, offerId) => {
         }
 
         const commissionPercent = config.trade.commissionPercent;
-        const commissionBuyer = (Number(offererListing.price) * commissionPercent) / 100;
-        const commissionSeller = (Number(targetListing.price) * commissionPercent) / 100;
+        const commissionBuyer = roundUsd((Number(offererListing.price) * commissionPercent) / 100);
+        const commissionSeller = roundUsd((Number(targetListing.price) * commissionPercent) / 100);
         const offererWallet = wallets.find((wallet) => wallet.userId === offer.offererId);
         const targetOwnerWallet = wallets.find((wallet) => wallet.userId === offer.targetOwnerId);
 
@@ -87,7 +90,7 @@ const acceptOffer = async (targetOwnerId, offerId) => {
                 data: { balance: { decrement: commissionSeller } },
             }),
         ]);
-        await companyAccountService.creditCompanyAccount(tx, commissionBuyer + commissionSeller);
+        await companyAccountService.creditCompanyAccount(tx, roundUsd(commissionBuyer + commissionSeller));
         await tx.monthlyFeeLog.createMany({
             data: [
                 { userId: offer.offererId, amount: commissionBuyer, type: 'TRADE_COMMISSION' },
@@ -131,20 +134,39 @@ const cancelOffer = async (offererId, offerId) => {
     });
 };
 
+// Listing prices inside an offer are shown in the viewer's own currency.
+const withOfferDisplay = (offer, viewerCurrency) => ({
+    ...offer,
+    offererListing: offer.offererListing
+        ? currencyService.attachDisplay(offer.offererListing, ['price'], viewerCurrency)
+        : offer.offererListing,
+    targetListing: offer.targetListing
+        ? currencyService.attachDisplay(offer.targetListing, ['price'], viewerCurrency)
+        : offer.targetListing,
+});
+
 const getMyOffers = async (offererId) => {
-    return prisma.barterOffer.findMany({
-        where: { offererId },
-        include: { offererListing: true, targetListing: true },
-        orderBy: { createdAt: 'desc' },
-    });
+    const [offers, viewerCurrency] = await Promise.all([
+        prisma.barterOffer.findMany({
+            where: { offererId },
+            include: { offererListing: true, targetListing: true },
+            orderBy: { createdAt: 'desc' },
+        }),
+        currencyService.getUserCurrency(offererId),
+    ]);
+    return offers.map((offer) => withOfferDisplay(offer, viewerCurrency));
 };
 
 const getReceivedOffers = async (targetOwnerId) => {
-    return prisma.barterOffer.findMany({
-        where: { targetOwnerId },
-        include: { offererListing: true, targetListing: true },
-        orderBy: { createdAt: 'desc' },
-    });
+    const [offers, viewerCurrency] = await Promise.all([
+        prisma.barterOffer.findMany({
+            where: { targetOwnerId },
+            include: { offererListing: true, targetListing: true },
+            orderBy: { createdAt: 'desc' },
+        }),
+        currencyService.getUserCurrency(targetOwnerId),
+    ]);
+    return offers.map((offer) => withOfferDisplay(offer, viewerCurrency));
 };
 
 const profileSelect = {
@@ -152,7 +174,7 @@ const profileSelect = {
         id: true,
         name: true,
         role: true,
-        businessProfile: { select: { businessName: true, city: true, address: true } },
+        businessProfile: { select: { businessName: true, streetNumber: true, streetName: true, city: true, state: true, postcode: true } },
         customerProfile: { select: { city: true, address: true } },
     },
 };
@@ -175,7 +197,8 @@ const getOfferById = async (userId, offerId) => {
         throw new ApiError(httpStatus.FORBIDDEN, 'You do not have access to this offer');
     }
 
-    return offer;
+    const viewerCurrency = await currencyService.getUserCurrency(userId);
+    return withOfferDisplay(offer, viewerCurrency);
 };
 
 module.exports = { createOffer, acceptOffer, rejectOffer, cancelOffer, getMyOffers, getReceivedOffers, getOfferById };

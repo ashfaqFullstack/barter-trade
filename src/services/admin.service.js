@@ -1,5 +1,7 @@
+
 const { cloudinaryService, emailService } = require('.');
 const config = require('../config/config');
+const currencyService = require('./currency.service');
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status').default;
@@ -38,7 +40,7 @@ const getPendingUsers = async (filter, options) => {
     ]);
 
     return {
-        results: users,
+        results: users.map((u) => ({ ...u, currency: currencyService.getCurrencyCodeForCountry(u.country) })),
         page: Number(page),
         limit: Number(limit),
         totalResults: total,
@@ -57,7 +59,18 @@ const approveUser = async (userId, creditLimit) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Only pending users can be approved');
     }
 
-    const startingLimit = creditLimit ?? config.wallet.defaultCreditLimit;
+    // Admin types the limit in the USER's own country currency (e.g. PKR for a Pakistani user);
+    // it is stored as USD. The env default is treated as USD.
+    // let startingLimit = config.wallet.defaultCreditLimit;
+    // if (creditLimit !== undefined && creditLimit !== null) {
+    //     const userCurrencyCode = await currencyService.getUserCurrencyCode(userId);
+    //     startingLimit = await currencyService.toUsd(creditLimit, userCurrencyCode);
+    // }
+    let startingLimit = user.role === 'CUSTOMER' ? 0 : config.wallet.defaultCreditLimit;
+    if (user.role !== 'CUSTOMER' && creditLimit !== undefined && creditLimit !== null) {
+        const userCurrencyCode = await currencyService.getUserCurrencyCode(userId);
+        startingLimit = await currencyService.toUsd(creditLimit, userCurrencyCode);
+    }
 
     const updatedUser = await prisma.$transaction(async (tx) => {
         const updated = await tx.user.update({
@@ -125,6 +138,11 @@ const getUserDetails = async (userId) => {
     if (!user) {
         throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
     }
+
+    // The currency the admin should enter this user's credit limit in.
+    user.currency = currencyService.getCurrencyCodeForCountry(
+        user.country || user.businessProfile?.country || user.customerProfile?.country,
+    );
 
     if (user.businessProfile?.documents) {
         user.businessProfile.documents = user.businessProfile.documents.map((doc) => ({
@@ -277,7 +295,7 @@ const approveProfileUpdateRequest = async (requestId) => {
 
     const isBusiness = request.user.role === 'BUSINESS';
 
-    const updatedRequest = await prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx) => {
         if (isBusiness) {
             await tx.businessProfile.update({
                 where: { userId: request.userId },

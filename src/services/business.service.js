@@ -1,3 +1,4 @@
+
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status').default;
@@ -6,10 +7,14 @@ const cloudinaryService = require('./cloudinary.service');
 const getUploadSignature = () => cloudinaryService.generateUploadSignature();
 
 const completeBusinessProfile = async (userId, data) => {
+    const payload = { ...data };
+    if (payload.declarationAccepted === true) {
+        payload.declarationAcceptedAt = new Date();
+    }
     return prisma.businessProfile.upsert({
         where: { userId },
-        create: { userId, ...data },
-        update: data,
+        create: { userId, ...payload },
+        update: payload,
     });
 };
 
