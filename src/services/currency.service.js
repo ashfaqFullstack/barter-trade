@@ -1,7 +1,7 @@
 
 const httpStatus = require('http-status').default;
-const countryToCurrency = require('country-to-currency');
 const isoCountries = require('i18n-iso-countries');
+const COUNTRY_TO_CURRENCY = require('../utils/country-to-currency')
 const prisma = require('../config/prisma');
 const logger = require('../config/logger');
 const ApiError = require('../utils/ApiError');
@@ -9,7 +9,6 @@ const { roundUsd, roundForCurrency, getCurrencyDecimals } = require('../utils/mo
 
 isoCountries.registerLocale(require('i18n-iso-countries/langs/en.json'));
 
-const COUNTRY_TO_CURRENCY = countryToCurrency.default || countryToCurrency; // { PK: 'PKR', US: 'USD', ... }
 const BASE_CURRENCY = 'USD';
 const COUNTRY_ALIASES = { UK: 'GB', UAE: 'AE', USA: 'US', 'U.S.A.': 'US', 'U.S.': 'US', 'U.K.': 'GB', KOREA: 'KR', RUSSIA: 'RU', TURKEY: 'TR' };
 const STALE_AFTER_MS = 12 * 60 * 60 * 1000; // lazily refresh if rates are older than this
