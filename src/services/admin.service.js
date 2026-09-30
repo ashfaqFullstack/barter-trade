@@ -277,7 +277,7 @@ const approveProfileUpdateRequest = async (requestId) => {
 
     const isBusiness = request.user.role === 'BUSINESS';
 
-    return prisma.$transaction(async (tx) => {
+    const updatedRequest = await prisma.$transaction(async (tx) => {
         if (isBusiness) {
             await tx.businessProfile.update({
                 where: { userId: request.userId },
