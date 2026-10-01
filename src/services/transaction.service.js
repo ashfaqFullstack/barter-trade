@@ -84,7 +84,7 @@ const sendTransaction = async (senderId, receiverId, amount, pin) => {
         });
 
         // Audit trail — commission portions logged per side.
-        await tx.monthlyFeeLog.createMany({
+        await tx.feeLog.createMany({
             data: [
                 { userId: senderId, amount: commissionBuyer, type: 'TRADE_COMMISSION' },
                 { userId: receiverId, amount: commissionSeller, type: 'TRADE_COMMISSION' },

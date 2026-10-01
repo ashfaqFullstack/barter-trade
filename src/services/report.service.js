@@ -23,18 +23,18 @@ const getAllTransactions = async ({ page = 1, limit = 10 }) => {
     return { results, page: Number(page), limit: Number(limit), totalResults: total, totalPages: Math.ceil(total / limit) };
 };
 
-const getFeeLogs = async ({ type, page = 1, limit = 10 }) => {
-    const where = type ? { type } : {};
+const getCommissionLogs = async ({ page = 1, limit = 10 }) => {
+    const where = { type: 'TRADE_COMMISSION' };
 
     const [results, total] = await Promise.all([
-        prisma.monthlyFeeLog.findMany({
+        prisma.feeLog.findMany({
             where,
             include: { user: { select: { id: true, name: true, email: true } } },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
             take: Number(limit),
         }),
-        prisma.monthlyFeeLog.count({ where }),
+        prisma.feeLog.count({ where }),
     ]);
 
     return { results, page: Number(page), limit: Number(limit), totalResults: total, totalPages: Math.ceil(total / limit) };
@@ -95,4 +95,4 @@ const getSalesChart = async (days = 7) => {
     return buckets;
 };
 
-module.exports = { getCompanyAccount, getAllTransactions, getFeeLogs, getDashboardStats, getSalesChart };
+module.exports = { getCompanyAccount, getAllTransactions, getCommissionLogs, getDashboardStats, getSalesChart };

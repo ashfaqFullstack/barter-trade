@@ -11,8 +11,8 @@ const getAllTransactions = catchAsync(async (req, res) => {
     res.send(result);
 });
 
-const getFeeLogs = catchAsync(async (req, res) => {
-    const result = await reportService.getFeeLogs(req.query);
+const getCommissionLogs = catchAsync(async (req, res) => {
+    const result = await reportService.getCommissionLogs(req.query);
     res.send(result);
 });
 
@@ -27,4 +27,4 @@ const getSalesChart = catchAsync(async (req, res) => {
     res.send(data);
 });
 
-module.exports = { getCompanyAccount, getAllTransactions, getFeeLogs, getDashboardStats, getSalesChart };
+module.exports = { getCompanyAccount, getAllTransactions, getCommissionLogs, getDashboardStats, getSalesChart };

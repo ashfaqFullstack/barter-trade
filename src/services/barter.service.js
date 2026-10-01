@@ -91,7 +91,7 @@ const acceptOffer = async (targetOwnerId, offerId) => {
             }),
         ]);
         await companyAccountService.creditCompanyAccount(tx, roundUsd(commissionBuyer + commissionSeller));
-        await tx.monthlyFeeLog.createMany({
+        await tx.feeLog.createMany({
             data: [
                 { userId: offer.offererId, amount: commissionBuyer, type: 'TRADE_COMMISSION' },
                 { userId: offer.targetOwnerId, amount: commissionSeller, type: 'TRADE_COMMISSION' },

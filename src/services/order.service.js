@@ -117,7 +117,7 @@ const completeOrder = async (buyerId, orderId) => {
             },
         });
 
-        await tx.monthlyFeeLog.createMany({
+        await tx.feeLog.createMany({
             data: [
                 { userId: order.buyerId, amount: order.commissionBuyer, type: 'TRADE_COMMISSION' },
                 { userId: order.sellerId, amount: order.commissionSeller, type: 'TRADE_COMMISSION' },

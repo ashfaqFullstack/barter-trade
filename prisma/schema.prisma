@@ -47,8 +47,8 @@ enum TransactionStatus {
 }
 
 enum FeeType {
-  MONTHLY_FEE
   TRADE_COMMISSION
+  LEGACY_MONTHLY_FEE
 }
 
 enum OrderStatus {
@@ -146,7 +146,7 @@ model User {
   listings          Listing[]
   sentTransactions  Transaction[]     @relation("SenderTransactions")
   recvTransactions  Transaction[]     @relation("ReceiverTransactions")
-  monthlyFeeLogs    MonthlyFeeLog[]
+  feeLogs           FeeLog[]
   pinResetTokens    PinResetToken[]
 
 
@@ -265,7 +265,7 @@ model Wallet {
   @@map("wallets")
 }
 
-// Single-row ledger that collects all commission + monthly fees.
+// Single-row ledger that collects trade commissions.
 // Enforce single row at the application layer (e.g. fixed known id).
 model CompanyAccount {
   id           String   @id @default(uuid())
@@ -335,13 +335,12 @@ model Transaction {
   @@map("transactions")
 }
 
-// Log of all deductions going into the CompanyAccount — monthly fees
-// AND trade commissions — for audit/reporting.
-model MonthlyFeeLog {
+// Audit log for trade commissions. Legacy monthly-fee rows remain stored but are no longer used.
+model FeeLog {
   id     String  @id @default(uuid())
   userId String
   amount Decimal @db.Decimal(18, 6) // USD
-  type   FeeType @default(MONTHLY_FEE)
+  type   FeeType @default(TRADE_COMMISSION)
 
   createdAt DateTime @default(now())
 

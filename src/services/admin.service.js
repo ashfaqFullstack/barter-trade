@@ -131,6 +131,7 @@ const getUserDetails = async (userId) => {
             createdAt: true,
             businessProfile: { include: { documents: true } },
             customerProfile: true,
+            wallet: true,
             rejectionReason: true
         },
     });
@@ -139,10 +140,11 @@ const getUserDetails = async (userId) => {
         throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
     }
 
-    // The currency the admin should enter this user's credit limit in.
-    user.currency = currencyService.getCurrencyCodeForCountry(
-        user.country || user.businessProfile?.country || user.customerProfile?.country,
-    );
+    const userCurrency = await currencyService.getUserCurrency(userId);
+    user.currency = userCurrency.currencyCode;
+    if (user.wallet) {
+        user.wallet = currencyService.attachDisplay(user.wallet, ['balance', 'creditLimit'], userCurrency);
+    }
 
     if (user.businessProfile?.documents) {
         user.businessProfile.documents = user.businessProfile.documents.map((doc) => ({
