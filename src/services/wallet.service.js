@@ -10,15 +10,17 @@ const currencyService = require('./currency.service');
 const getMyWallet = async (userId) => {
     const [wallet, user] = await Promise.all([
         prisma.wallet.findUnique({ where: { userId } }),
-        prisma.user.findUnique({ where: { id: userId }, select: { transactionPin: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { transactionPin: true, role: true } }),
     ]);
 
     if (!wallet) {
         throw new ApiError(httpStatus.NOT_FOUND, 'Wallet not found — your account may not be approved yet');
     }
 
-    // balance / creditLimit stay in USD (the ledger); `display` is in the user's own currency.
-    const viewerCurrency = await currencyService.getUserCurrency(userId);
+    // Ledger values stay in USD; admins view their wallet in AUD, other users in their country currency.
+    const viewerCurrency = user.role === 'ADMIN'
+        ? { currencyCode: 'AUD', rate: await currencyService.getRate('AUD') }
+        : await currencyService.getUserCurrency(userId);
     const withDisplay = currencyService.attachDisplay(wallet, ['balance', 'creditLimit'], viewerCurrency);
     const availableBalance = currencyService.convertWithRate(
         Number(wallet.balance) + Number(wallet.creditLimit),
