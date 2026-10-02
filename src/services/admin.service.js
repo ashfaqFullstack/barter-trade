@@ -141,14 +141,9 @@ const getUserDetails = async (userId) => {
     }
 
     const userCurrency = await currencyService.getUserCurrency(userId);
-    const adminDisplayCurrency = {
-        currencyCode: 'AUD',
-        rate: await currencyService.getRate('AUD'),
-    };
     user.currency = userCurrency.currencyCode;
-    user.walletDisplayCurrency = adminDisplayCurrency.currencyCode;
     if (user.wallet) {
-        user.wallet = currencyService.attachDisplay(user.wallet, ['balance', 'creditLimit'], adminDisplayCurrency);
+        user.wallet = currencyService.attachDisplay(user.wallet, ['balance', 'creditLimit'], userCurrency);
     }
 
     if (user.businessProfile?.documents) {
