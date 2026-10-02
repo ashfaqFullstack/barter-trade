@@ -16,11 +16,8 @@ const envVarsSchema = Joi.object()
         JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(30).description('days after which refresh token expires'),
         JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number().default(10).description('minutes after which reset password token expires'),
         JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number().default(10).description('minutes after which verify email token expires'),
-        SMTP_HOST: Joi.string().description('server that will send the emails'),
-        SMTP_PORT: Joi.number().description('port to connect to email server'),
-        SMTP_USERNAME: Joi.string().description('username for email server'),
-        SMTP_PASSWORD: Joi.string().description('password for email server'),
-        EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
+        RESEND_API_KEY: Joi.string().required().description('Resend API key'),
+        EMAIL_FROM: Joi.string().required().description('verified sender address used by Resend'),
         CLOUDINARY_CLOUD_NAME: Joi.string().description('cloudinary cloud name'),
         CLOUDINARY_API_KEY: Joi.string().description('cloudinary api key'),
         CLOUDINARY_API_SECRET: Joi.string().description('cloudinary api secret'),
@@ -57,14 +54,7 @@ module.exports = {
     },
 
     email: {
-        smtp: {
-            host: envVars.SMTP_HOST,
-            port: envVars.SMTP_PORT,
-            auth: {
-                user: envVars.SMTP_USERNAME,
-                pass: envVars.SMTP_PASSWORD,
-            },
-        },
+        apiKey: envVars.RESEND_API_KEY,
         from: envVars.EMAIL_FROM,
     },
 

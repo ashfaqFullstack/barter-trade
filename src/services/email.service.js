@@ -1,11 +1,21 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const config = require('../config/config');
 const logger = require('../config/logger');
 
-const transport = nodemailer.createTransport(config.email.smtp);
+const resend = new Resend(config.email.apiKey);
 
 const sendEmail = async (to, subject, text, html) => {
-    await transport.sendMail({ from: config.email.from, to, subject, text, ...(html && { html }) });
+    const { error } = await resend.emails.send({
+        from: config.email.from,
+        to,
+        subject,
+        text,
+        ...(html && { html }),
+    });
+
+    if (error) {
+        throw new Error(`Resend email failed: ${error.message}`);
+    }
 };
 
 const sendNotificationEmail = async (
