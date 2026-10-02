@@ -230,25 +230,26 @@ const companyAccountService = require('./companyAccount.service');
 
 const fundAdminWallet = async (adminId, amount) => {
     const companyAccount = await companyAccountService.getOrCreateCompanyAccount();
+    const amountInUsd = await currencyService.toUsd(amount, 'AUD');
 
-    if (Number(companyAccount.totalBalance) < amount) {
+    if (Number(companyAccount.totalBalance) < amountInUsd) {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient company account balance');
     }
 
     const updatedRequest = await prisma.$transaction(async (tx) => {
         await tx.companyAccount.update({
             where: { id: companyAccountService.ACCOUNT_ID },
-            data: { totalBalance: { decrement: amount } },
+            data: { totalBalance: { decrement: amountInUsd } },
         });
 
         const wallet = await tx.wallet.upsert({
             where: { userId: adminId },
-            create: { userId: adminId, balance: amount, creditLimit: 0 },
-            update: { balance: { increment: amount } },
+            create: { userId: adminId, balance: amountInUsd, creditLimit: 0 },
+            update: { balance: { increment: amountInUsd } },
         });
 
         await tx.companyFundingLog.create({
-            data: { adminId, amount },
+            data: { adminId, amount: amountInUsd },
         });
 
         return wallet;

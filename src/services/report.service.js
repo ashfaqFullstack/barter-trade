@@ -1,13 +1,27 @@
 
 const prisma = require('../config/prisma');
 const companyAccountService = require('./companyAccount.service');
+const currencyService = require('./currency.service');
+
+const getAdminCurrency = async () => ({
+    currencyCode: 'AUD',
+    rate: await currencyService.getRate('AUD'),
+});
 
 const getCompanyAccount = async () => {
-    return companyAccountService.getOrCreateCompanyAccount();
+    const [account, currency] = await Promise.all([
+        companyAccountService.getOrCreateCompanyAccount(),
+        getAdminCurrency(),
+    ]);
+
+    return {
+        ...account,
+        display: currencyService.attachDisplay(account, ['totalBalance'], currency).display,
+    };
 };
 
 const getAllTransactions = async ({ page = 1, limit = 10 }) => {
-    const [results, total] = await Promise.all([
+    const [results, total, currency] = await Promise.all([
         prisma.transaction.findMany({
             include: {
                 sender: { select: { id: true, name: true, email: true } },
@@ -18,15 +32,27 @@ const getAllTransactions = async ({ page = 1, limit = 10 }) => {
             take: Number(limit),
         }),
         prisma.transaction.count(),
+        getAdminCurrency(),
     ]);
 
-    return { results, page: Number(page), limit: Number(limit), totalResults: total, totalPages: Math.ceil(total / limit) };
+    const displayFields = ['amount', 'commissionBuyer', 'commissionSeller'];
+    return {
+        results: results.map((transaction) => ({
+            ...transaction,
+            display: currencyService.attachDisplay(transaction, displayFields, currency).display,
+        })),
+        currency: currency.currencyCode,
+        page: Number(page),
+        limit: Number(limit),
+        totalResults: total,
+        totalPages: Math.ceil(total / limit),
+    };
 };
 
 const getCommissionLogs = async ({ page = 1, limit = 10 }) => {
     const where = { type: 'TRADE_COMMISSION' };
 
-    const [results, total] = await Promise.all([
+    const [results, total, currency] = await Promise.all([
         prisma.feeLog.findMany({
             where,
             include: { user: { select: { id: true, name: true, email: true } } },
@@ -35,9 +61,20 @@ const getCommissionLogs = async ({ page = 1, limit = 10 }) => {
             take: Number(limit),
         }),
         prisma.feeLog.count({ where }),
+        getAdminCurrency(),
     ]);
 
-    return { results, page: Number(page), limit: Number(limit), totalResults: total, totalPages: Math.ceil(total / limit) };
+    return {
+        results: results.map((log) => ({
+            ...log,
+            display: currencyService.attachDisplay(log, ['amount'], currency).display,
+        })),
+        currency: currency.currencyCode,
+        page: Number(page),
+        limit: Number(limit),
+        totalResults: total,
+        totalPages: Math.ceil(total / limit),
+    };
 };
 
 const getDashboardStats = async () => {
@@ -49,13 +86,18 @@ const getDashboardStats = async () => {
         companyAccountService.getOrCreateCompanyAccount(),
     ]);
 
+    const currency = await getAdminCurrency();
     return {
-        currency: 'USD', // platform-wide figures are always USD
+        currency: currency.currencyCode,
         totalUsers,
         pendingUsers,
         totalTransactions,
         totalListings,
-        companyBalance: companyAccount.totalBalance,
+        companyBalance: currencyService.convertWithRate(
+            companyAccount.totalBalance,
+            currency.rate,
+            currency.currencyCode,
+        ),
     };
 };
 
@@ -92,7 +134,13 @@ const getSalesChart = async (days = 7) => {
         bucket.trades += 1;
     });
 
-    return buckets;
+    const currency = await getAdminCurrency();
+    return buckets.map((bucket) => ({
+        ...bucket,
+        volume: currencyService.convertWithRate(bucket.volume, currency.rate, currency.currencyCode),
+        revenue: currencyService.convertWithRate(bucket.revenue, currency.rate, currency.currencyCode),
+        currency: currency.currencyCode,
+    }));
 };
 
 module.exports = { getCompanyAccount, getAllTransactions, getCommissionLogs, getDashboardStats, getSalesChart };
