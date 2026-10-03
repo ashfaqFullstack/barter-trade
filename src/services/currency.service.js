@@ -113,11 +113,14 @@ const getUserCurrencyCode = async (userId, client = prisma) => {
     const user = await client.user.findUnique({
         where: { id: userId },
         select: {
+            role: true,
             country: true,
             businessProfile: { select: { country: true } },
             customerProfile: { select: { country: true } },
         },
     });
+    if (user?.role === 'ADMIN') return 'AUD';
+
     const country = user?.country || user?.businessProfile?.country || user?.customerProfile?.country;
     return getCurrencyCodeForCountry(country);
 };
