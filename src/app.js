@@ -18,10 +18,29 @@ app.use(helmet());
 app.use(express.json());
 
 // cors origin security
+// app.use(cors({
+//     origin: process.env.FRONTEND_URL,
+//     credentials: true,
+// }));
+
+const allowedOrigins = [
+    'https://unitedtradecard.com',
+    'https://www.unitedtradecard.com',
+    'https://unitedtradecard.com.au',
+    'https://www.unitedtradecard.com.au'
+];
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS policy error'));
+        }
+    },
     credentials: true,
 }));
+
 app.use(cookieParser());
 
 app.use(passport.initialize());
