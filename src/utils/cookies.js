@@ -3,10 +3,18 @@ const config = require("../config/config");
 const cookieOptions = {
     httpOnly: true,
     secure: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    path: '/',
+};
+
+const legacyCookieOptions = {
+    ...cookieOptions,
+    path: '/api/backend/auth',
 };
 
 const setAuthCookies = (res, tokens) => {
+    res.clearCookie('accessToken', legacyCookieOptions);
+    res.clearCookie('refreshToken', legacyCookieOptions);
     res.cookie('accessToken', tokens.access.token, {
         ...cookieOptions,
         expires: new Date(tokens.access.expires),
@@ -20,6 +28,8 @@ const setAuthCookies = (res, tokens) => {
 const clearAuthCookies = (res) => {
     res.clearCookie('accessToken', cookieOptions);
     res.clearCookie('refreshToken', cookieOptions);
+    res.clearCookie('accessToken', legacyCookieOptions);
+    res.clearCookie('refreshToken', legacyCookieOptions);
 };
 
 module.exports = { setAuthCookies, clearAuthCookies };
